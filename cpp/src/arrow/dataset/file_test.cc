@@ -211,10 +211,5 @@ TEST_F(TestFileSystemDataset, FragmentPartitions) {
       });
 }
 
-TEST_F(TestSingleFileDataset, FragmentPartitions) {
-  MakeSingleFileDataset("A/a");
-  AssertFragmentsAreFromPath(dataset_->GetFragments(), {"A/a"});
-}
-
 }  // namespace dataset
 }  // namespace arrow
