@@ -17,12 +17,17 @@
 
 package org.apache.arrow.dataset.scanner;
 
+import org.apache.arrow.memory.ArrowBuf;
+import org.apache.arrow.memory.RootAllocator;
+
 /**
  * Options used during scanning.
  */
 public class ScanOptions {
   private final String[] columns;
   private final long batchSize;
+  private ArrowBuf filterBuffer;
+  private long filterSize = -1; // size in bytes
 
   /**
    * Constructor.
@@ -34,11 +39,42 @@ public class ScanOptions {
     this.batchSize = batchSize;
   }
 
+  public ScanOptions(String[] columns, long batchSize, String filterAsHexString) {
+    this.columns = columns;
+    this.batchSize = batchSize;
+    this.filterBuffer = writeFilterToDirectBuffer(filterAsHexString);
+  }
+
   public String[] getColumns() {
     return columns;
   }
 
   public long getBatchSize() {
     return batchSize;
+  }
+
+  public long getFilterMemoryAddress() {
+    return filterBuffer != null ? filterBuffer.memoryAddress() : -1; // TODO: fix
+//    return filterBuffer.memoryAddress();
+  }
+
+  public long getFilterSize() {
+    return filterSize;
+  }
+
+  private ArrowBuf writeFilterToDirectBuffer(String filterAsHexString) {
+    RootAllocator allocator = new RootAllocator(4096); // TODO: adjust limit
+    ArrowBuf buffer = allocator.buffer(filterAsHexString.length() / 2); // TODO: adjust based on binary or hex string
+
+    // write filter to buffer here
+    for (int i = 0, j = 0; i < filterAsHexString.length(); i += 2, j++) {
+      String byteInHex = filterAsHexString.substring(i, i + 2);
+      int num = Integer.parseUnsignedInt(byteInHex, 16);
+      buffer.setByte(j, num);
+    }
+
+    this.filterSize = filterAsHexString.length() / 2; // TODO: adjust
+
+    return buffer;
   }
 }
