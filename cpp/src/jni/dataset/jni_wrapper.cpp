@@ -357,7 +357,7 @@ class DisposableScannerAdaptor {
  * Signature: (J[Ljava/lang/String;[BJ)J
  */
 JNIEXPORT jlong JNICALL Java_org_apache_arrow_dataset_jni_JniWrapper_createScanner(
-    JNIEnv* env, jobject, jlong dataset_id, jobjectArray columns, jlong batch_size) {
+    JNIEnv* env, jobject, jlong dataset_id, jobjectArray columns, jlong batch_size, jlong filter_memory_address, jlong filter_size) {
   JNI_METHOD_START
   std::shared_ptr<arrow::dataset::ScanContext> context =
       std::make_shared<arrow::dataset::ScanContext>();
@@ -369,6 +369,12 @@ JNIEXPORT jlong JNICALL Java_org_apache_arrow_dataset_jni_JniWrapper_createScann
   std::vector<std::string> column_vector = ToStringVector(env, columns);
   JniAssertOkOrThrow(scanner_builder->Project(column_vector));
   JniAssertOkOrThrow(scanner_builder->BatchSize(batch_size));
+  arrow::Buffer filter_buffer(reinterpret_cast<uint8_t*>(filter_memory_address), filter_size);
+  arrow::Result<std::shared_ptr<arrow::dataset::Expression>> result = arrow::dataset::Expression::Deserialize(filter_buffer);
+  if (result.ok()) {
+    std::shared_ptr<arrow::dataset::Expression> expr = result.ValueOrDie();
+    JniAssertOkOrThrow(scanner_builder->Filter(expr));
+  }
 
   auto scanner = JniGetOrThrow(scanner_builder->Finish());
   std::shared_ptr<DisposableScannerAdaptor> scanner_adaptor =
