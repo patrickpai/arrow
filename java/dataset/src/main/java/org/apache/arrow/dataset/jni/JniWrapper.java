@@ -71,7 +71,7 @@ public class JniWrapper {
    * @param batchSize batch size of scanned record batches.
    * @return the native pointer of the arrow::dataset::Scanner instance.
    */
-  public native long createScanner(long datasetId, String[] columns, long batchSize);
+  public native long createScanner(long datasetId, String[] columns, long batchSize, long filterMemoryAddress, long filterSize);
 
   /**
    * Get a serialized schema from native instance of a Scanner.
