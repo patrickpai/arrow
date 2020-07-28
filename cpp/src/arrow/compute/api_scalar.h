@@ -29,9 +29,12 @@
 #include "arrow/result.h"
 #include "arrow/util/macros.h"
 #include "arrow/util/visibility.h"
+#include "generated/Expression_generated.h"
 
 namespace arrow {
 namespace compute {
+
+namespace flatbuf = org::apache::arrow::flatbuf;
 
 // ----------------------------------------------------------------------
 
@@ -79,19 +82,10 @@ Result<Datum> Multiply(const Datum& left, const Datum& right,
                        ArithmeticOptions options = ArithmeticOptions(),
                        ExecContext* ctx = NULLPTR);
 
-enum CompareOperator {
-  EQUAL,
-  NOT_EQUAL,
-  GREATER,
-  GREATER_EQUAL,
-  LESS,
-  LESS_EQUAL,
-};
-
 struct CompareOptions : public FunctionOptions {
-  explicit CompareOptions(CompareOperator op) : op(op) {}
+  explicit CompareOptions(flatbuf::CompareOperator op) : op(op) {}
 
-  enum CompareOperator op;
+  flatbuf::CompareOperator op;
 };
 
 /// \brief Compare a numeric array with a scalar.

@@ -423,7 +423,7 @@ class TakeExpression : public CustomExpression {
 
   bool Equals(const Expression& other) const override {
     // in a real CustomExpression this would need to be more sophisticated
-    return other.type() == ExpressionType::CUSTOM && ToString() == other.ToString();
+    return other.type() == flatbuf::ExpressionType::CUSTOM && ToString() == other.ToString();
   }
 
   Result<std::shared_ptr<DataType>> Validate(const Schema& schema) const override {
@@ -442,7 +442,7 @@ class TakeExpression : public CustomExpression {
 
     Result<Datum> Evaluate(const Expression& expr, const RecordBatch& batch,
                            MemoryPool* pool) const override {
-      if (expr.type() == ExpressionType::CUSTOM) {
+      if (expr.type() == flatbuf::ExpressionType::CUSTOM) {
         const auto& take_expr = checked_cast<const TakeExpression&>(expr);
         return EvaluateTake(take_expr, batch, pool);
       }

@@ -35,53 +35,14 @@
 #include "arrow/type_fwd.h"
 #include "arrow/util/checked_cast.h"
 #include "arrow/util/variant.h"
+#include "generated/Expression_generated.h"
 
 namespace arrow {
 namespace dataset {
 
+namespace flatbuf = org::apache::arrow::flatbuf;
+
 using compute::CastOptions;
-using compute::CompareOperator;
-
-struct ExpressionType {
-  enum type {
-    /// a reference to a column within a record batch, will evaluate to an array
-    FIELD,
-
-    /// a literal singular value encapsulated in a Scalar
-    SCALAR,
-
-    /// a literal Array
-    // TODO(bkietz) ARRAY,
-
-    /// an inversion of another expression
-    NOT,
-
-    /// cast an expression to a given DataType
-    CAST,
-
-    /// a conjunction of multiple expressions (true if all operands are true)
-    AND,
-
-    /// a disjunction of multiple expressions (true if any operand is true)
-    OR,
-
-    /// a comparison of two other expressions
-    COMPARISON,
-
-    /// replace nulls with other expressions
-    /// currently only boolean expressions may be coalesced
-    // TODO(bkietz) COALESCE,
-
-    /// extract validity as a boolean expression
-    IS_VALID,
-
-    /// check each element for membership in a set
-    IN,
-
-    /// custom user defined expression
-    CUSTOM,
-  };
-};
 
 class InExpression;
 class CastExpression;
@@ -90,7 +51,7 @@ class IsValidExpression;
 /// Represents an expression tree
 class ARROW_DS_EXPORT Expression {
  public:
-  explicit Expression(ExpressionType::type type) : type_(type) {}
+  explicit Expression(flatbuf::ExpressionType type) : type_(type) {}
 
   virtual ~Expression() = default;
 
@@ -216,7 +177,7 @@ class ARROW_DS_EXPORT Expression {
   static Result<std::shared_ptr<Expression>> Deserialize(const Buffer&);
 
   /// \brief Return the expression's type identifier
-  ExpressionType::type type() const { return type_; }
+  flatbuf::ExpressionType type() const { return type_; }
 
   /// Copy this expression into a shared pointer.
   virtual std::shared_ptr<Expression> Copy() const = 0;
@@ -235,14 +196,14 @@ class ARROW_DS_EXPORT Expression {
                           CastOptions options = CastOptions()) const;
 
  protected:
-  ExpressionType::type type_;
+  flatbuf::ExpressionType type_;
 };
 
 /// Helper class which implements Copy and forwards construction
-template <typename Base, typename Derived, ExpressionType::type E>
+template <typename Base, typename Derived, flatbuf::ExpressionType E>
 class ExpressionImpl : public Base {
  public:
-  static constexpr ExpressionType::type expression_type = E;
+  static constexpr flatbuf::ExpressionType expression_type = E;
 
   template <typename A0, typename... A>
   explicit ExpressionImpl(A0&& arg0, A&&... args)
@@ -261,7 +222,7 @@ class ARROW_DS_EXPORT UnaryExpression : public Expression {
   bool Equals(const Expression& other) const override;
 
  protected:
-  UnaryExpression(ExpressionType::type type, std::shared_ptr<Expression> operand)
+  UnaryExpression(flatbuf::ExpressionType type, std::shared_ptr<Expression> operand)
       : Expression(type), operand_(std::move(operand)) {}
 
   std::shared_ptr<Expression> operand_;
@@ -277,7 +238,7 @@ class ARROW_DS_EXPORT BinaryExpression : public Expression {
   bool Equals(const Expression& other) const override;
 
  protected:
-  BinaryExpression(ExpressionType::type type, std::shared_ptr<Expression> left_operand,
+  BinaryExpression(flatbuf::ExpressionType type, std::shared_ptr<Expression> left_operand,
                    std::shared_ptr<Expression> right_operand)
       : Expression(type),
         left_operand_(std::move(left_operand)),
@@ -288,9 +249,9 @@ class ARROW_DS_EXPORT BinaryExpression : public Expression {
 
 class ARROW_DS_EXPORT ComparisonExpression final
     : public ExpressionImpl<BinaryExpression, ComparisonExpression,
-                            ExpressionType::COMPARISON> {
+                            flatbuf::ExpressionType::COMPARISON> {
  public:
-  ComparisonExpression(CompareOperator op, std::shared_ptr<Expression> left_operand,
+  ComparisonExpression(flatbuf::CompareOperator op, std::shared_ptr<Expression> left_operand,
                        std::shared_ptr<Expression> right_operand)
       : ExpressionImpl(std::move(left_operand), std::move(right_operand)), op_(op) {}
 
@@ -300,7 +261,7 @@ class ARROW_DS_EXPORT ComparisonExpression final
 
   std::shared_ptr<Expression> Assume(const Expression& given) const override;
 
-  CompareOperator op() const { return op_; }
+  flatbuf::CompareOperator op() const { return op_; }
 
   Result<std::shared_ptr<DataType>> Validate(const Schema& schema) const override;
 
@@ -308,11 +269,11 @@ class ARROW_DS_EXPORT ComparisonExpression final
   std::shared_ptr<Expression> AssumeGivenComparison(
       const ComparisonExpression& given) const;
 
-  CompareOperator op_;
+  flatbuf::CompareOperator op_;
 };
 
 class ARROW_DS_EXPORT AndExpression final
-    : public ExpressionImpl<BinaryExpression, AndExpression, ExpressionType::AND> {
+    : public ExpressionImpl<BinaryExpression, AndExpression, flatbuf::ExpressionType::AND> {
  public:
   using ExpressionImpl::ExpressionImpl;
 
@@ -324,7 +285,7 @@ class ARROW_DS_EXPORT AndExpression final
 };
 
 class ARROW_DS_EXPORT OrExpression final
-    : public ExpressionImpl<BinaryExpression, OrExpression, ExpressionType::OR> {
+    : public ExpressionImpl<BinaryExpression, OrExpression, flatbuf::ExpressionType::OR> {
  public:
   using ExpressionImpl::ExpressionImpl;
 
@@ -336,7 +297,7 @@ class ARROW_DS_EXPORT OrExpression final
 };
 
 class ARROW_DS_EXPORT NotExpression final
-    : public ExpressionImpl<UnaryExpression, NotExpression, ExpressionType::NOT> {
+    : public ExpressionImpl<UnaryExpression, NotExpression, flatbuf::ExpressionType::NOT> {
  public:
   using ExpressionImpl::ExpressionImpl;
 
@@ -349,7 +310,7 @@ class ARROW_DS_EXPORT NotExpression final
 
 class ARROW_DS_EXPORT IsValidExpression final
     : public ExpressionImpl<UnaryExpression, IsValidExpression,
-                            ExpressionType::IS_VALID> {
+                            flatbuf::ExpressionType::IS_VALID> {
  public:
   using ExpressionImpl::ExpressionImpl;
 
@@ -361,7 +322,7 @@ class ARROW_DS_EXPORT IsValidExpression final
 };
 
 class ARROW_DS_EXPORT InExpression final
-    : public ExpressionImpl<UnaryExpression, InExpression, ExpressionType::IN> {
+    : public ExpressionImpl<UnaryExpression, InExpression, flatbuf::ExpressionType::IN> {
  public:
   InExpression(std::shared_ptr<Expression> operand, std::shared_ptr<Array> set)
       : ExpressionImpl(std::move(operand)), set_(std::move(set)) {}
@@ -381,7 +342,7 @@ class ARROW_DS_EXPORT InExpression final
 
 /// Explicitly cast an expression to a different type
 class ARROW_DS_EXPORT CastExpression final
-    : public ExpressionImpl<UnaryExpression, CastExpression, ExpressionType::CAST> {
+    : public ExpressionImpl<UnaryExpression, CastExpression, flatbuf::ExpressionType::CAST> {
  public:
   CastExpression(std::shared_ptr<Expression> operand, std::shared_ptr<DataType> to,
                  CastOptions options)
@@ -422,7 +383,7 @@ class ARROW_DS_EXPORT CastExpression final
 class ARROW_DS_EXPORT ScalarExpression final : public Expression {
  public:
   explicit ScalarExpression(const std::shared_ptr<Scalar>& value)
-      : Expression(ExpressionType::SCALAR), value_(std::move(value)) {}
+      : Expression(flatbuf::ExpressionType::SCALAR), value_(std::move(value)) {}
 
   const std::shared_ptr<Scalar>& value() const { return value_; }
 
@@ -443,7 +404,7 @@ class ARROW_DS_EXPORT ScalarExpression final : public Expression {
 class ARROW_DS_EXPORT FieldExpression final : public Expression {
  public:
   explicit FieldExpression(std::string name)
-      : Expression(ExpressionType::FIELD), name_(std::move(name)) {}
+      : Expression(flatbuf::ExpressionType::FIELD), name_(std::move(name)) {}
 
   std::string name() const { return name_; }
 
@@ -461,7 +422,7 @@ class ARROW_DS_EXPORT FieldExpression final : public Expression {
 
 class ARROW_DS_EXPORT CustomExpression : public Expression {
  protected:
-  CustomExpression() : Expression(ExpressionType::CUSTOM) {}
+  CustomExpression() : Expression(flatbuf::ExpressionType::CUSTOM) {}
 };
 
 ARROW_DS_EXPORT std::shared_ptr<Expression> and_(std::shared_ptr<Expression> lhs,
@@ -494,19 +455,19 @@ auto scalar(T&& value) -> decltype(scalar(MakeScalar(std::forward<T>(value)))) {
 #define COMPARISON_FACTORY(NAME, FACTORY_NAME, OP)                                      \
   inline std::shared_ptr<ComparisonExpression> FACTORY_NAME(                            \
       const std::shared_ptr<Expression>& lhs, const std::shared_ptr<Expression>& rhs) { \
-    return std::make_shared<ComparisonExpression>(CompareOperator::NAME, lhs, rhs);     \
+    return std::make_shared<ComparisonExpression>(flatbuf::CompareOperator::NAME, lhs, rhs);\
   }                                                                                     \
                                                                                         \
   template <typename T, typename Enable = typename std::enable_if<!std::is_base_of<     \
                             Expression, typename std::decay<T>::type>::value>::type>    \
   ComparisonExpression operator OP(const Expression& lhs, T&& rhs) {                    \
-    return ComparisonExpression(CompareOperator::NAME, lhs.Copy(),                      \
+    return ComparisonExpression(flatbuf::CompareOperator::NAME, lhs.Copy(),             \
                                 scalar(std::forward<T>(rhs)));                          \
   }                                                                                     \
                                                                                         \
   inline ComparisonExpression operator OP(const Expression& lhs,                        \
                                           const Expression& rhs) {                      \
-    return ComparisonExpression(CompareOperator::NAME, lhs.Copy(), rhs.Copy());         \
+    return ComparisonExpression(flatbuf::CompareOperator::NAME, lhs.Copy(), rhs.Copy());\
   }
 COMPARISON_FACTORY(EQUAL, equal, ==)
 COMPARISON_FACTORY(NOT_EQUAL, not_equal, !=)
@@ -530,7 +491,7 @@ inline FieldExpression operator"" _(const char* name, size_t name_length) {
 
 template <typename T, typename Enable>
 bool Expression::Equals(T&& t) const {
-  if (type_ != ExpressionType::SCALAR) {
+  if (type_ != flatbuf::ExpressionType::SCALAR) {
     return false;
   }
   auto s = MakeScalar(std::forward<T>(t));
@@ -541,34 +502,34 @@ template <typename Visitor>
 auto VisitExpression(const Expression& expr, Visitor&& visitor)
     -> decltype(visitor(expr)) {
   switch (expr.type()) {
-    case ExpressionType::FIELD:
+    case flatbuf::ExpressionType::FIELD:
       return visitor(internal::checked_cast<const FieldExpression&>(expr));
 
-    case ExpressionType::SCALAR:
+    case flatbuf::ExpressionType::SCALAR:
       return visitor(internal::checked_cast<const ScalarExpression&>(expr));
 
-    case ExpressionType::IN:
+    case flatbuf::ExpressionType::IN:
       return visitor(internal::checked_cast<const InExpression&>(expr));
 
-    case ExpressionType::IS_VALID:
+    case flatbuf::ExpressionType::IS_VALID:
       return visitor(internal::checked_cast<const IsValidExpression&>(expr));
 
-    case ExpressionType::AND:
+    case flatbuf::ExpressionType::AND:
       return visitor(internal::checked_cast<const AndExpression&>(expr));
 
-    case ExpressionType::OR:
+    case flatbuf::ExpressionType::OR:
       return visitor(internal::checked_cast<const OrExpression&>(expr));
 
-    case ExpressionType::NOT:
+    case flatbuf::ExpressionType::NOT:
       return visitor(internal::checked_cast<const NotExpression&>(expr));
 
-    case ExpressionType::CAST:
+    case flatbuf::ExpressionType::CAST:
       return visitor(internal::checked_cast<const CastExpression&>(expr));
 
-    case ExpressionType::COMPARISON:
+    case flatbuf::ExpressionType::COMPARISON:
       return visitor(internal::checked_cast<const ComparisonExpression&>(expr));
 
-    case ExpressionType::CUSTOM:
+    case flatbuf::ExpressionType::CUSTOM:
     default:
       break;
   }

@@ -39,9 +39,12 @@
 #include "arrow/util/range.h"
 #include "arrow/util/sort.h"
 #include "arrow/util/string_view.h"
+#include "generated/Expression_generated.h"
 
 namespace arrow {
 namespace dataset {
+
+namespace flatbuf = org::apache::arrow::flatbuf;
 
 using util::string_view;
 
@@ -96,27 +99,27 @@ Status KeyValuePartitioning::VisitKeys(
     const Expression& expr,
     const std::function<Status(const std::string& name,
                                const std::shared_ptr<Scalar>& value)>& visitor) {
-  if (expr.type() == ExpressionType::AND) {
+  if (expr.type() == org::apache::arrow::flatbuf::ExpressionType::AND) {
     const auto& and_ = checked_cast<const AndExpression&>(expr);
     RETURN_NOT_OK(VisitKeys(*and_.left_operand(), visitor));
     RETURN_NOT_OK(VisitKeys(*and_.right_operand(), visitor));
     return Status::OK();
   }
 
-  if (expr.type() != ExpressionType::COMPARISON) {
+  if (expr.type() != org::apache::arrow::flatbuf::ExpressionType::COMPARISON) {
     return Status::OK();
   }
 
   const auto& cmp = checked_cast<const ComparisonExpression&>(expr);
-  if (cmp.op() != compute::CompareOperator::EQUAL) {
+  if (cmp.op() != org::apache::arrow::flatbuf::CompareOperator::EQUAL) {
     return Status::OK();
   }
 
   auto lhs = cmp.left_operand().get();
   auto rhs = cmp.right_operand().get();
-  if (lhs->type() != ExpressionType::FIELD) std::swap(lhs, rhs);
+  if (lhs->type() != org::apache::arrow::flatbuf::ExpressionType::FIELD) std::swap(lhs, rhs);
 
-  if (lhs->type() != ExpressionType::FIELD || rhs->type() != ExpressionType::SCALAR) {
+  if (lhs->type() != org::apache::arrow::flatbuf::ExpressionType::FIELD || rhs->type() != org::apache::arrow::flatbuf::ExpressionType::SCALAR) {
     return Status::OK();
   }
 
@@ -191,21 +194,21 @@ Result<std::shared_ptr<Expression>> KeyValuePartitioning::Parse(
 }
 
 Result<std::string> KeyValuePartitioning::Format(const Expression& expr, int i) const {
-  if (expr.type() != ExpressionType::COMPARISON) {
+  if (expr.type() != org::apache::arrow::flatbuf::ExpressionType::COMPARISON) {
     return Status::Invalid(expr.ToString(), " is not a comparison expression");
   }
 
   const auto& cmp = checked_cast<const ComparisonExpression&>(expr);
-  if (cmp.op() != compute::CompareOperator::EQUAL) {
+  if (cmp.op() != org::apache::arrow::flatbuf::CompareOperator::EQUAL) {
     return Status::Invalid(expr.ToString(), " is not an equality comparison expression");
   }
 
-  if (cmp.left_operand()->type() != ExpressionType::FIELD) {
+  if (cmp.left_operand()->type() != org::apache::arrow::flatbuf::ExpressionType::FIELD) {
     return Status::Invalid(expr.ToString(), " LHS is not a field");
   }
   const auto& lhs = checked_cast<const FieldExpression&>(*cmp.left_operand());
 
-  if (cmp.right_operand()->type() != ExpressionType::SCALAR) {
+  if (cmp.right_operand()->type() != org::apache::arrow::flatbuf::ExpressionType::SCALAR) {
     return Status::Invalid(expr.ToString(), " RHS is not a scalar");
   }
   const auto& rhs = checked_cast<const ScalarExpression&>(*cmp.right_operand());

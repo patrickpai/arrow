@@ -31,6 +31,7 @@
 #include "arrow/testing/gtest_util.h"
 #include "arrow/testing/random.h"
 #include "arrow/testing/util.h"
+#include "generated/Expression_generated.h"
 
 namespace arrow {
 
@@ -39,6 +40,8 @@ using internal::checked_pointer_cast;
 using util::string_view;
 
 namespace compute {
+
+namespace flatbuf = org::apache::arrow::flatbuf;
 
 // ----------------------------------------------------------------------
 
@@ -299,7 +302,7 @@ template <typename CType>
 using Comparator = bool(CType, CType);
 
 template <typename CType>
-Comparator<CType>* GetComparator(CompareOperator op) {
+Comparator<CType>* GetComparator(flatbuf::CompareOperator op) {
   static Comparator<CType>* cmp[] = {
       // EQUAL
       [](CType l, CType r) { return l == r; },
@@ -314,7 +317,7 @@ Comparator<CType>* GetComparator(CompareOperator op) {
       // LESS_EQUAL
       [](CType l, CType r) { return l <= r; },
   };
-  return cmp[op];
+  return cmp[static_cast<int>(op)];
 }
 
 template <typename T, typename Fn, typename CType = typename TypeTraits<T>::CType>
@@ -329,14 +332,14 @@ std::shared_ptr<Array> CompareAndFilter(const CType* data, int64_t length, Fn&& 
 
 template <typename T, typename CType = typename TypeTraits<T>::CType>
 std::shared_ptr<Array> CompareAndFilter(const CType* data, int64_t length, CType val,
-                                        CompareOperator op) {
+                                        flatbuf::CompareOperator op) {
   auto cmp = GetComparator<CType>(op);
   return CompareAndFilter<T>(data, length, [&](CType e) { return cmp(e, val); });
 }
 
 template <typename T, typename CType = typename TypeTraits<T>::CType>
 std::shared_ptr<Array> CompareAndFilter(const CType* data, int64_t length,
-                                        const CType* other, CompareOperator op) {
+                                        const CType* other, flatbuf::CompareOperator op) {
   auto cmp = GetComparator<CType>(op);
   return CompareAndFilter<T>(data, length, [&](CType e) { return cmp(e, *other++); });
 }
@@ -354,7 +357,7 @@ TYPED_TEST(TestFilterKernelWithNumeric, CompareScalarAndFilterRandomNumeric) {
         checked_pointer_cast<ArrayType>(rand.Numeric<TypeParam>(length, 0, 100, 0));
     CType c_fifty = 50;
     auto fifty = std::make_shared<ScalarType>(c_fifty);
-    for (auto op : {EQUAL, NOT_EQUAL, GREATER, LESS_EQUAL}) {
+    for (auto op : {flatbuf::CompareOperator::EQUAL, flatbuf::CompareOperator::NOT_EQUAL, flatbuf::CompareOperator::GREATER, flatbuf::CompareOperator::LESS_EQUAL}) {
       ASSERT_OK_AND_ASSIGN(Datum selection,
                            Compare(array, Datum(fifty), CompareOptions(op)));
       ASSERT_OK_AND_ASSIGN(Datum filtered, Filter(array, selection));
@@ -377,7 +380,7 @@ TYPED_TEST(TestFilterKernelWithNumeric, CompareArrayAndFilterRandomNumeric) {
         rand.Numeric<TypeParam>(length, 0, 100, /*null_probability=*/0.0));
     auto rhs = checked_pointer_cast<ArrayType>(
         rand.Numeric<TypeParam>(length, 0, 100, /*null_probability=*/0.0));
-    for (auto op : {EQUAL, NOT_EQUAL, GREATER, LESS_EQUAL}) {
+    for (auto op : {flatbuf::CompareOperator::EQUAL, flatbuf::CompareOperator::NOT_EQUAL, flatbuf::CompareOperator::GREATER, flatbuf::CompareOperator::LESS_EQUAL}) {
       ASSERT_OK_AND_ASSIGN(Datum selection, Compare(lhs, rhs, CompareOptions(op)));
       ASSERT_OK_AND_ASSIGN(Datum filtered, Filter(lhs, selection));
       auto filtered_array = filtered.make_array();
@@ -403,9 +406,9 @@ TYPED_TEST(TestFilterKernelWithNumeric, ScalarInRangeAndFilterRandomNumeric) {
     auto fifty = std::make_shared<ScalarType>(c_fifty);
     auto hundred = std::make_shared<ScalarType>(c_hundred);
     ASSERT_OK_AND_ASSIGN(Datum greater_than_fifty,
-                         Compare(array, Datum(fifty), CompareOptions(GREATER)));
+                         Compare(array, Datum(fifty), CompareOptions(flatbuf::CompareOperator::GREATER)));
     ASSERT_OK_AND_ASSIGN(Datum less_than_hundred,
-                         Compare(array, Datum(hundred), CompareOptions(LESS)));
+                         Compare(array, Datum(hundred), CompareOptions(flatbuf::CompareOperator::LESS)));
     ASSERT_OK_AND_ASSIGN(Datum selection, And(greater_than_fifty, less_than_hundred));
     ASSERT_OK_AND_ASSIGN(Datum filtered, Filter(array, selection));
     auto filtered_array = filtered.make_array();

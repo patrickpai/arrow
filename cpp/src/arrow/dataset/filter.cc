@@ -45,7 +45,6 @@
 
 namespace arrow {
 
-using compute::CompareOperator;
 using compute::ExecContext;
 
 namespace dataset {
@@ -184,32 +183,32 @@ Result<Comparison::type> Compare(const Scalar& lhs, const Scalar& rhs) {
   return vis.result_;
 }
 
-CompareOperator InvertCompareOperator(CompareOperator op) {
+flatbuf::CompareOperator InvertCompareOperator(flatbuf::CompareOperator op) {
   switch (op) {
-    case CompareOperator::EQUAL:
-      return CompareOperator::NOT_EQUAL;
+    case flatbuf::CompareOperator::EQUAL:
+      return flatbuf::CompareOperator::NOT_EQUAL;
 
-    case CompareOperator::NOT_EQUAL:
-      return CompareOperator::EQUAL;
+    case flatbuf::CompareOperator::NOT_EQUAL:
+      return flatbuf::CompareOperator::EQUAL;
 
-    case CompareOperator::GREATER:
-      return CompareOperator::LESS_EQUAL;
+    case flatbuf::CompareOperator::GREATER:
+      return flatbuf::CompareOperator::LESS_EQUAL;
 
-    case CompareOperator::GREATER_EQUAL:
-      return CompareOperator::LESS;
+    case flatbuf::CompareOperator::GREATER_EQUAL:
+      return flatbuf::CompareOperator::LESS;
 
-    case CompareOperator::LESS:
-      return CompareOperator::GREATER_EQUAL;
+    case flatbuf::CompareOperator::LESS:
+      return flatbuf::CompareOperator::GREATER_EQUAL;
 
-    case CompareOperator::LESS_EQUAL:
-      return CompareOperator::GREATER;
+    case flatbuf::CompareOperator::LESS_EQUAL:
+      return flatbuf::CompareOperator::GREATER;
 
     default:
       break;
   }
 
   DCHECK(false);
-  return CompareOperator::EQUAL;
+  return flatbuf::CompareOperator::EQUAL;
 }
 
 template <typename Boolean>
@@ -230,16 +229,16 @@ std::shared_ptr<Expression> InvertBoolean(const Boolean& expr) {
 
 std::shared_ptr<Expression> Invert(const Expression& expr) {
   switch (expr.type()) {
-    case ExpressionType::NOT:
+    case flatbuf::ExpressionType::NOT:
       return checked_cast<const NotExpression&>(expr).operand();
 
-    case ExpressionType::AND:
+    case flatbuf::ExpressionType::AND:
       return InvertBoolean(checked_cast<const AndExpression&>(expr));
 
-    case ExpressionType::OR:
+    case flatbuf::ExpressionType::OR:
       return InvertBoolean(checked_cast<const OrExpression&>(expr));
 
-    case ExpressionType::COMPARISON: {
+    case flatbuf::ExpressionType::COMPARISON: {
       const auto& comparison = checked_cast<const ComparisonExpression&>(expr);
       auto inverted_op = InvertCompareOperator(comparison.op());
       return std::make_shared<ComparisonExpression>(
@@ -253,16 +252,16 @@ std::shared_ptr<Expression> Invert(const Expression& expr) {
 }
 
 std::shared_ptr<Expression> Expression::Assume(const Expression& given) const {
-  if (given.type() == ExpressionType::COMPARISON) {
+  if (given.type() == flatbuf::ExpressionType::COMPARISON) {
     const auto& given_cmp = checked_cast<const ComparisonExpression&>(given);
-    if (given_cmp.op() == CompareOperator::EQUAL) {
+    if (given_cmp.op() == flatbuf::CompareOperator::EQUAL) {
       if (this->Equals(given_cmp.left_operand()) &&
-          given_cmp.right_operand()->type() == ExpressionType::SCALAR) {
+          given_cmp.right_operand()->type() == flatbuf::ExpressionType::SCALAR) {
         return given_cmp.right_operand();
       }
 
       if (this->Equals(given_cmp.right_operand()) &&
-          given_cmp.left_operand()->type() == ExpressionType::SCALAR) {
+          given_cmp.left_operand()->type() == flatbuf::ExpressionType::SCALAR) {
         return given_cmp.left_operand();
       }
     }
@@ -273,11 +272,11 @@ std::shared_ptr<Expression> Expression::Assume(const Expression& given) const {
 
 std::shared_ptr<Expression> ComparisonExpression::Assume(const Expression& given) const {
   switch (given.type()) {
-    case ExpressionType::COMPARISON: {
+    case flatbuf::ExpressionType::COMPARISON: {
       return AssumeGivenComparison(checked_cast<const ComparisonExpression&>(given));
     }
 
-    case ExpressionType::NOT: {
+    case flatbuf::ExpressionType::NOT: {
       const auto& given_not = checked_cast<const NotExpression&>(given);
       if (auto inverted = Invert(*given_not.operand())) {
         return Assume(*inverted);
@@ -285,7 +284,7 @@ std::shared_ptr<Expression> ComparisonExpression::Assume(const Expression& given
       return Copy();
     }
 
-    case ExpressionType::OR: {
+    case flatbuf::ExpressionType::OR: {
       const auto& given_or = checked_cast<const OrExpression&>(given);
 
       auto left_simplified = Assume(*given_or.left_operand());
@@ -300,7 +299,7 @@ std::shared_ptr<Expression> ComparisonExpression::Assume(const Expression& given
       return Copy();
     }
 
-    case ExpressionType::AND: {
+    case flatbuf::ExpressionType::AND: {
       const auto& given_and = checked_cast<const AndExpression&>(given);
 
       auto simplified = Copy();
@@ -330,7 +329,7 @@ std::shared_ptr<Expression> ComparisonExpression::AssumeGivenComparison(
   }
 
   for (auto rhs : {right_operand_, given.right_operand_}) {
-    if (rhs->type() != ExpressionType::SCALAR) {
+    if (rhs->type() != flatbuf::ExpressionType::SCALAR) {
       return Copy();
     }
   }
@@ -352,24 +351,24 @@ std::shared_ptr<Expression> ComparisonExpression::AssumeGivenComparison(
   if (cmp == Comparison::GREATER) {
     // the rhs of e is greater than that of given
     switch (op()) {
-      case CompareOperator::EQUAL:
-      case CompareOperator::GREATER:
-      case CompareOperator::GREATER_EQUAL:
+      case flatbuf::CompareOperator::EQUAL:
+      case flatbuf::CompareOperator::GREATER:
+      case flatbuf::CompareOperator::GREATER_EQUAL:
         switch (given.op()) {
-          case CompareOperator::EQUAL:
-          case CompareOperator::LESS:
-          case CompareOperator::LESS_EQUAL:
+          case flatbuf::CompareOperator::EQUAL:
+          case flatbuf::CompareOperator::LESS:
+          case flatbuf::CompareOperator::LESS_EQUAL:
             return never;
           default:
             return Copy();
         }
-      case CompareOperator::NOT_EQUAL:
-      case CompareOperator::LESS:
-      case CompareOperator::LESS_EQUAL:
+      case flatbuf::CompareOperator::NOT_EQUAL:
+      case flatbuf::CompareOperator::LESS:
+      case flatbuf::CompareOperator::LESS_EQUAL:
         switch (given.op()) {
-          case CompareOperator::EQUAL:
-          case CompareOperator::LESS:
-          case CompareOperator::LESS_EQUAL:
+          case flatbuf::CompareOperator::EQUAL:
+          case flatbuf::CompareOperator::LESS:
+          case flatbuf::CompareOperator::LESS_EQUAL:
             return always;
           default:
             return Copy();
@@ -382,24 +381,24 @@ std::shared_ptr<Expression> ComparisonExpression::AssumeGivenComparison(
   if (cmp == Comparison::LESS) {
     // the rhs of e is less than that of given
     switch (op()) {
-      case CompareOperator::EQUAL:
-      case CompareOperator::LESS:
-      case CompareOperator::LESS_EQUAL:
+      case flatbuf::CompareOperator::EQUAL:
+      case flatbuf::CompareOperator::LESS:
+      case flatbuf::CompareOperator::LESS_EQUAL:
         switch (given.op()) {
-          case CompareOperator::EQUAL:
-          case CompareOperator::GREATER:
-          case CompareOperator::GREATER_EQUAL:
+          case flatbuf::CompareOperator::EQUAL:
+          case flatbuf::CompareOperator::GREATER:
+          case flatbuf::CompareOperator::GREATER_EQUAL:
             return never;
           default:
             return Copy();
         }
-      case CompareOperator::NOT_EQUAL:
-      case CompareOperator::GREATER:
-      case CompareOperator::GREATER_EQUAL:
+      case flatbuf::CompareOperator::NOT_EQUAL:
+      case flatbuf::CompareOperator::GREATER:
+      case flatbuf::CompareOperator::GREATER_EQUAL:
         switch (given.op()) {
-          case CompareOperator::EQUAL:
-          case CompareOperator::GREATER:
-          case CompareOperator::GREATER_EQUAL:
+          case flatbuf::CompareOperator::EQUAL:
+          case flatbuf::CompareOperator::GREATER:
+          case flatbuf::CompareOperator::GREATER_EQUAL:
             return always;
           default:
             return Copy();
@@ -413,68 +412,68 @@ std::shared_ptr<Expression> ComparisonExpression::AssumeGivenComparison(
 
   // the rhs of the comparisons are equal
   switch (op_) {
-    case CompareOperator::EQUAL:
+    case flatbuf::CompareOperator::EQUAL:
       switch (given.op()) {
-        case CompareOperator::NOT_EQUAL:
-        case CompareOperator::GREATER:
-        case CompareOperator::LESS:
+        case flatbuf::CompareOperator::NOT_EQUAL:
+        case flatbuf::CompareOperator::GREATER:
+        case flatbuf::CompareOperator::LESS:
           return never;
-        case CompareOperator::EQUAL:
+        case flatbuf::CompareOperator::EQUAL:
           return always;
         default:
           return Copy();
       }
-    case CompareOperator::NOT_EQUAL:
+    case flatbuf::CompareOperator::NOT_EQUAL:
       switch (given.op()) {
-        case CompareOperator::EQUAL:
+        case flatbuf::CompareOperator::EQUAL:
           return never;
-        case CompareOperator::NOT_EQUAL:
-        case CompareOperator::GREATER:
-        case CompareOperator::LESS:
+        case flatbuf::CompareOperator::NOT_EQUAL:
+        case flatbuf::CompareOperator::GREATER:
+        case flatbuf::CompareOperator::LESS:
           return always;
         default:
           return Copy();
       }
-    case CompareOperator::GREATER:
+    case flatbuf::CompareOperator::GREATER:
       switch (given.op()) {
-        case CompareOperator::EQUAL:
-        case CompareOperator::LESS_EQUAL:
-        case CompareOperator::LESS:
+        case flatbuf::CompareOperator::EQUAL:
+        case flatbuf::CompareOperator::LESS_EQUAL:
+        case flatbuf::CompareOperator::LESS:
           return never;
-        case CompareOperator::GREATER:
+        case flatbuf::CompareOperator::GREATER:
           return always;
         default:
           return Copy();
       }
-    case CompareOperator::GREATER_EQUAL:
+    case flatbuf::CompareOperator::GREATER_EQUAL:
       switch (given.op()) {
-        case CompareOperator::LESS:
+        case flatbuf::CompareOperator::LESS:
           return never;
-        case CompareOperator::EQUAL:
-        case CompareOperator::GREATER:
-        case CompareOperator::GREATER_EQUAL:
+        case flatbuf::CompareOperator::EQUAL:
+        case flatbuf::CompareOperator::GREATER:
+        case flatbuf::CompareOperator::GREATER_EQUAL:
           return always;
         default:
           return Copy();
       }
-    case CompareOperator::LESS:
+    case flatbuf::CompareOperator::LESS:
       switch (given.op()) {
-        case CompareOperator::EQUAL:
-        case CompareOperator::GREATER:
-        case CompareOperator::GREATER_EQUAL:
+        case flatbuf::CompareOperator::EQUAL:
+        case flatbuf::CompareOperator::GREATER:
+        case flatbuf::CompareOperator::GREATER_EQUAL:
           return never;
-        case CompareOperator::LESS:
+        case flatbuf::CompareOperator::LESS:
           return always;
         default:
           return Copy();
       }
-    case CompareOperator::LESS_EQUAL:
+    case flatbuf::CompareOperator::LESS_EQUAL:
       switch (given.op()) {
-        case CompareOperator::GREATER:
+        case flatbuf::CompareOperator::GREATER:
           return never;
-        case CompareOperator::EQUAL:
-        case CompareOperator::LESS:
-        case CompareOperator::LESS_EQUAL:
+        case flatbuf::CompareOperator::EQUAL:
+        case flatbuf::CompareOperator::LESS:
+        case flatbuf::CompareOperator::LESS_EQUAL:
           return always;
         default:
           return Copy();
@@ -555,7 +554,7 @@ std::shared_ptr<Expression> NotExpression::Assume(const Expression& given) const
 
 std::shared_ptr<Expression> InExpression::Assume(const Expression& given) const {
   auto operand = operand_->Assume(given);
-  if (operand->type() != ExpressionType::SCALAR) {
+  if (operand->type() != flatbuf::ExpressionType::SCALAR) {
     return std::make_shared<InExpression>(std::move(operand), set_);
   }
 
@@ -565,7 +564,7 @@ std::shared_ptr<Expression> InExpression::Assume(const Expression& given) const 
 
   const auto& value = checked_cast<const ScalarExpression&>(*operand).value();
 
-  compute::CompareOptions eq(CompareOperator::EQUAL);
+  compute::CompareOptions eq(flatbuf::CompareOperator::EQUAL);
   Result<Datum> out_result = compute::Compare(set_, value, eq);
   if (!out_result.ok()) {
     return std::make_shared<InExpression>(std::move(operand), set_);
@@ -587,7 +586,7 @@ std::shared_ptr<Expression> InExpression::Assume(const Expression& given) const 
 
 std::shared_ptr<Expression> IsValidExpression::Assume(const Expression& given) const {
   auto operand = operand_->Assume(given);
-  if (operand->type() == ExpressionType::SCALAR) {
+  if (operand->type() == flatbuf::ExpressionType::SCALAR) {
     return scalar(!operand->IsNull());
   }
 
@@ -623,19 +622,19 @@ const std::shared_ptr<Expression>& CastExpression::like_expr() const {
 
 std::string FieldExpression::ToString() const { return name_; }
 
-std::string OperatorName(compute::CompareOperator op) {
+std::string OperatorName(flatbuf::CompareOperator op) {
   switch (op) {
-    case CompareOperator::EQUAL:
+    case flatbuf::CompareOperator::EQUAL:
       return "==";
-    case CompareOperator::NOT_EQUAL:
+    case flatbuf::CompareOperator::NOT_EQUAL:
       return "!=";
-    case CompareOperator::LESS:
+    case flatbuf::CompareOperator::LESS:
       return "<";
-    case CompareOperator::LESS_EQUAL:
+    case flatbuf::CompareOperator::LESS_EQUAL:
       return "<=";
-    case CompareOperator::GREATER:
+    case flatbuf::CompareOperator::GREATER:
       return ">";
-    case CompareOperator::GREATER_EQUAL:
+    case flatbuf::CompareOperator::GREATER_EQUAL:
       return ">=";
     default:
       DCHECK(false);
@@ -665,7 +664,7 @@ std::string OrExpression::ToString() const {
 }
 
 std::string NotExpression::ToString() const {
-  if (operand_->type() == ExpressionType::IS_VALID) {
+  if (operand_->type() == flatbuf::ExpressionType::IS_VALID) {
     const auto& is_valid = checked_cast<const IsValidExpression&>(*operand_);
     return JoinStrings({"(", is_valid.operand()->ToString(), " is null)"}, "");
   }
@@ -717,12 +716,12 @@ bool ComparisonExpression::Equals(const Expression& other) const {
 }
 
 bool ScalarExpression::Equals(const Expression& other) const {
-  return other.type() == ExpressionType::SCALAR &&
+  return other.type() == flatbuf::ExpressionType::SCALAR &&
          value_->Equals(*checked_cast<const ScalarExpression&>(other).value_);
 }
 
 bool FieldExpression::Equals(const Expression& other) const {
-  return other.type() == ExpressionType::FIELD &&
+  return other.type() == flatbuf::ExpressionType::FIELD &&
          name_ == checked_cast<const FieldExpression&>(other).name_;
 }
 
@@ -734,7 +733,7 @@ bool Expression::Equals(const std::shared_ptr<Expression>& other) const {
 }
 
 bool Expression::IsNull() const {
-  if (type_ != ExpressionType::SCALAR) {
+  if (type_ != flatbuf::ExpressionType::SCALAR) {
     return false;
   }
 
@@ -900,7 +899,7 @@ Result<std::shared_ptr<DataType>> CastExpression::Validate(const Schema& schema)
 
   // Until expressions carry a shape, detect scalar and try to cast it. Works
   // if the operand is a scalar leaf.
-  if (operand_->type() == ExpressionType::SCALAR) {
+  if (operand_->type() == flatbuf::ExpressionType::SCALAR) {
     auto scalar_expr = checked_pointer_cast<ScalarExpression>(operand_);
     ARROW_ASSIGN_OR_RAISE(std::ignore, scalar_expr->value()->CastTo(to_type));
     return to_type;
@@ -940,7 +939,7 @@ struct InsertImplicitCastsImpl {
 
   Result<std::shared_ptr<Expression>> Cast(std::shared_ptr<DataType> type,
                                            const Expression& expr) {
-    if (expr.type() != ExpressionType::SCALAR) {
+    if (expr.type() != flatbuf::ExpressionType::SCALAR) {
       return expr.CastTo(type).Copy();
     }
 
@@ -1005,7 +1004,7 @@ struct InsertImplicitCastsImpl {
       return expr.Copy();
     }
 
-    if (lhs.expr->type() == ExpressionType::SCALAR) {
+    if (lhs.expr->type() == flatbuf::ExpressionType::SCALAR) {
       ARROW_ASSIGN_OR_RAISE(lhs.expr, Cast(rhs.type, *lhs.expr));
     } else {
       ARROW_ASSIGN_OR_RAISE(rhs.expr, Cast(lhs.type, *rhs.expr));
@@ -1263,7 +1262,7 @@ struct SerializeImpl {
                                                           ArrayVector children) const {
     children.emplace_back();
     ARROW_ASSIGN_OR_RAISE(children.back(),
-                          MakeArrayFromScalar(Int32Scalar(expr.type()), 1));
+                          MakeArrayFromScalar(Int32Scalar(static_cast<int>(expr.type())), 1));
 
     return StructArray::Make(children, std::vector<std::string>(children.size(), ""));
   }
@@ -1317,7 +1316,7 @@ struct SerializeImpl {
     ARROW_ASSIGN_OR_RAISE(auto left_operand, ToArray(*expr.left_operand()));
     ARROW_ASSIGN_OR_RAISE(auto right_operand, ToArray(*expr.right_operand()));
     // store the CompareOperator in a single element Int32Array
-    ARROW_ASSIGN_OR_RAISE(auto op, MakeArrayFromScalar(Int32Scalar(expr.op()), 1));
+    ARROW_ASSIGN_OR_RAISE(auto op, MakeArrayFromScalar(Int32Scalar(static_cast<int>(expr.op())), 1));
     return TaggedWithChildren(expr, {left_operand, right_operand, op});
   }
 
@@ -1369,22 +1368,22 @@ struct DeserializeImpl {
 
     ARROW_ASSIGN_OR_RAISE(auto expression_type, GetExpressionType(struct_array));
     switch (expression_type) {
-      case ExpressionType::FIELD: {
+      case flatbuf::ExpressionType::FIELD: {
         ARROW_ASSIGN_OR_RAISE(auto name, GetView<StringType>(struct_array, 0));
         return field_ref(name.to_string());
       }
 
-      case ExpressionType::SCALAR: {
+      case flatbuf::ExpressionType::SCALAR: {
         ARROW_ASSIGN_OR_RAISE(auto value, struct_array.field(0)->GetScalar(0));
         return scalar(std::move(value));
       }
 
-      case ExpressionType::NOT: {
+      case flatbuf::ExpressionType::NOT: {
         ARROW_ASSIGN_OR_RAISE(auto operand, FromArray(*struct_array.field(0)));
         return not_(std::move(operand));
       }
 
-      case ExpressionType::CAST: {
+      case flatbuf::ExpressionType::CAST: {
         ARROW_ASSIGN_OR_RAISE(auto operand, FromArray(*struct_array.field(0)));
         ARROW_ASSIGN_OR_RAISE(auto is_like_expr, GetView<BooleanType>(struct_array, 1));
         if (is_like_expr) {
@@ -1394,33 +1393,33 @@ struct DeserializeImpl {
         return operand->CastTo(struct_array.field(2)->type()).Copy();
       }
 
-      case ExpressionType::AND: {
+      case flatbuf::ExpressionType::AND: {
         ARROW_ASSIGN_OR_RAISE(auto left_operand, FromArray(*struct_array.field(0)));
         ARROW_ASSIGN_OR_RAISE(auto right_operand, FromArray(*struct_array.field(1)));
         return and_(std::move(left_operand), std::move(right_operand));
       }
 
-      case ExpressionType::OR: {
+      case flatbuf::ExpressionType::OR: {
         ARROW_ASSIGN_OR_RAISE(auto left_operand, FromArray(*struct_array.field(0)));
         ARROW_ASSIGN_OR_RAISE(auto right_operand, FromArray(*struct_array.field(1)));
         return or_(std::move(left_operand), std::move(right_operand));
       }
 
-      case ExpressionType::COMPARISON: {
+      case flatbuf::ExpressionType::COMPARISON: {
         ARROW_ASSIGN_OR_RAISE(auto left_operand, FromArray(*struct_array.field(0)));
         ARROW_ASSIGN_OR_RAISE(auto right_operand, FromArray(*struct_array.field(1)));
         ARROW_ASSIGN_OR_RAISE(auto op, GetView<Int32Type>(struct_array, 2));
-        return std::make_shared<ComparisonExpression>(static_cast<CompareOperator>(op),
+        return std::make_shared<ComparisonExpression>(static_cast<flatbuf::CompareOperator>(op),
                                                       std::move(left_operand),
                                                       std::move(right_operand));
       }
 
-      case ExpressionType::IS_VALID: {
+      case flatbuf::ExpressionType::IS_VALID: {
         ARROW_ASSIGN_OR_RAISE(auto operand, FromArray(*struct_array.field(0)));
         return std::make_shared<IsValidExpression>(std::move(operand));
       }
 
-      case ExpressionType::IN: {
+      case flatbuf::ExpressionType::IN: {
         ARROW_ASSIGN_OR_RAISE(auto operand, FromArray(*struct_array.field(0)));
         if (struct_array.field(1)->type_id() != Type::LIST) {
           return Status::TypeError("expected field 1 of ", struct_array,
@@ -1434,7 +1433,7 @@ struct DeserializeImpl {
         break;
     }
 
-    return Status::Invalid("non-deserializable ExpressionType ", expression_type);
+    return Status::Invalid("non-deserializable ExpressionType ", static_cast<int>(expression_type));
   }
 
   template <typename T, typename A = typename TypeTraits<T>::ArrayType>
@@ -1453,14 +1452,14 @@ struct DeserializeImpl {
     return checked_cast<const A&>(child).GetView(0);
   }
 
-  static Result<ExpressionType::type> GetExpressionType(const StructArray& array) {
+  static Result<flatbuf::ExpressionType> GetExpressionType(const StructArray& array) {
     if (array.struct_type()->num_fields() < 1) {
       return Status::Invalid("StructArray didn't contain ExpressionType member");
     }
 
     ARROW_ASSIGN_OR_RAISE(auto expression_type,
                           GetView<Int32Type>(array, array.num_fields() - 1));
-    return static_cast<ExpressionType::type>(expression_type);
+    return static_cast<flatbuf::ExpressionType>(expression_type);
   }
 
   Result<std::shared_ptr<Expression>> FromBuffer(const Buffer& serialized) {

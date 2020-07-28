@@ -34,12 +34,15 @@
 #include "arrow/type_traits.h"
 #include "arrow/util/bitmap_reader.h"
 #include "arrow/util/checked_cast.h"
+#include "generated/Expression_generated.h"
 
 namespace arrow {
 
 using internal::BitmapReader;
 
 namespace compute {
+
+namespace flatbuf = org::apache::arrow::flatbuf;
 
 using util::string_view;
 
@@ -77,19 +80,19 @@ static void ValidateCompare(CompareOptions options, const char* lhs_str,
 }
 
 template <typename T>
-static inline bool SlowCompare(CompareOperator op, const T& lhs, const T& rhs) {
+static inline bool SlowCompare(flatbuf::CompareOperator op, const T& lhs, const T& rhs) {
   switch (op) {
-    case EQUAL:
+    case flatbuf::CompareOperator::EQUAL:
       return lhs == rhs;
-    case NOT_EQUAL:
+    case flatbuf::CompareOperator::NOT_EQUAL:
       return lhs != rhs;
-    case GREATER:
+    case flatbuf::CompareOperator::GREATER:
       return lhs > rhs;
-    case GREATER_EQUAL:
+    case flatbuf::CompareOperator::GREATER_EQUAL:
       return lhs >= rhs;
-    case LESS:
+    case flatbuf::CompareOperator::LESS:
       return lhs < rhs;
-    case LESS_EQUAL:
+    case flatbuf::CompareOperator::LESS_EQUAL:
       return lhs <= rhs;
     default:
       return false;
@@ -251,7 +254,7 @@ TYPED_TEST(TestNumericCompareKernel, SimpleCompareArrayScalar) {
 
   Datum one(std::make_shared<ScalarType>(CType(1)));
 
-  CompareOptions eq(CompareOperator::EQUAL);
+  CompareOptions eq(flatbuf::CompareOperator::EQUAL);
   ValidateCompare<TypeParam>(eq, "[]", one, "[]");
   ValidateCompare<TypeParam>(eq, "[null]", one, "[null]");
   ValidateCompare<TypeParam>(eq, "[0,0,1,1,2,2]", one, "[0,0,1,1,0,0]");
@@ -259,7 +262,7 @@ TYPED_TEST(TestNumericCompareKernel, SimpleCompareArrayScalar) {
   ValidateCompare<TypeParam>(eq, "[5,4,3,2,1,0]", one, "[0,0,0,0,1,0]");
   ValidateCompare<TypeParam>(eq, "[null,0,1,1]", one, "[null,0,1,1]");
 
-  CompareOptions neq(CompareOperator::NOT_EQUAL);
+  CompareOptions neq(flatbuf::CompareOperator::NOT_EQUAL);
   ValidateCompare<TypeParam>(neq, "[]", one, "[]");
   ValidateCompare<TypeParam>(neq, "[null]", one, "[null]");
   ValidateCompare<TypeParam>(neq, "[0,0,1,1,2,2]", one, "[1,1,0,0,1,1]");
@@ -267,7 +270,7 @@ TYPED_TEST(TestNumericCompareKernel, SimpleCompareArrayScalar) {
   ValidateCompare<TypeParam>(neq, "[5,4,3,2,1,0]", one, "[1,1,1,1,0,1]");
   ValidateCompare<TypeParam>(neq, "[null,0,1,1]", one, "[null,1,0,0]");
 
-  CompareOptions gt(CompareOperator::GREATER);
+  CompareOptions gt(flatbuf::CompareOperator::GREATER);
   ValidateCompare<TypeParam>(gt, "[]", one, "[]");
   ValidateCompare<TypeParam>(gt, "[null]", one, "[null]");
   ValidateCompare<TypeParam>(gt, "[0,0,1,1,2,2]", one, "[0,0,0,0,1,1]");
@@ -275,7 +278,7 @@ TYPED_TEST(TestNumericCompareKernel, SimpleCompareArrayScalar) {
   ValidateCompare<TypeParam>(gt, "[4,5,6,7,8,9]", one, "[1,1,1,1,1,1]");
   ValidateCompare<TypeParam>(gt, "[null,0,1,1]", one, "[null,0,0,0]");
 
-  CompareOptions gte(CompareOperator::GREATER_EQUAL);
+  CompareOptions gte(flatbuf::CompareOperator::GREATER_EQUAL);
   ValidateCompare<TypeParam>(gte, "[]", one, "[]");
   ValidateCompare<TypeParam>(gte, "[null]", one, "[null]");
   ValidateCompare<TypeParam>(gte, "[0,0,1,1,2,2]", one, "[0,0,1,1,1,1]");
@@ -283,7 +286,7 @@ TYPED_TEST(TestNumericCompareKernel, SimpleCompareArrayScalar) {
   ValidateCompare<TypeParam>(gte, "[4,5,6,7,8,9]", one, "[1,1,1,1,1,1]");
   ValidateCompare<TypeParam>(gte, "[null,0,1,1]", one, "[null,0,1,1]");
 
-  CompareOptions lt(CompareOperator::LESS);
+  CompareOptions lt(flatbuf::CompareOperator::LESS);
   ValidateCompare<TypeParam>(lt, "[]", one, "[]");
   ValidateCompare<TypeParam>(lt, "[null]", one, "[null]");
   ValidateCompare<TypeParam>(lt, "[0,0,1,1,2,2]", one, "[1,1,0,0,0,0]");
@@ -291,7 +294,7 @@ TYPED_TEST(TestNumericCompareKernel, SimpleCompareArrayScalar) {
   ValidateCompare<TypeParam>(lt, "[4,5,6,7,8,9]", one, "[0,0,0,0,0,0]");
   ValidateCompare<TypeParam>(lt, "[null,0,1,1]", one, "[null,1,0,0]");
 
-  CompareOptions lte(CompareOperator::LESS_EQUAL);
+  CompareOptions lte(flatbuf::CompareOperator::LESS_EQUAL);
   ValidateCompare<TypeParam>(lte, "[]", one, "[]");
   ValidateCompare<TypeParam>(lte, "[null]", one, "[null]");
   ValidateCompare<TypeParam>(lte, "[0,0,1,1,2,2]", one, "[1,1,1,1,0,0]");
@@ -306,7 +309,7 @@ TYPED_TEST(TestNumericCompareKernel, SimpleCompareScalarArray) {
 
   Datum one(std::make_shared<ScalarType>(CType(1)));
 
-  CompareOptions eq(CompareOperator::EQUAL);
+  CompareOptions eq(flatbuf::CompareOperator::EQUAL);
   ValidateCompare<TypeParam>(eq, one, "[]", "[]");
   ValidateCompare<TypeParam>(eq, one, "[null]", "[null]");
   ValidateCompare<TypeParam>(eq, one, "[0,0,1,1,2,2]", "[0,0,1,1,0,0]");
@@ -314,7 +317,7 @@ TYPED_TEST(TestNumericCompareKernel, SimpleCompareScalarArray) {
   ValidateCompare<TypeParam>(eq, one, "[5,4,3,2,1,0]", "[0,0,0,0,1,0]");
   ValidateCompare<TypeParam>(eq, one, "[null,0,1,1]", "[null,0,1,1]");
 
-  CompareOptions neq(CompareOperator::NOT_EQUAL);
+  CompareOptions neq(flatbuf::CompareOperator::NOT_EQUAL);
   ValidateCompare<TypeParam>(neq, one, "[]", "[]");
   ValidateCompare<TypeParam>(neq, one, "[null]", "[null]");
   ValidateCompare<TypeParam>(neq, one, "[0,0,1,1,2,2]", "[1,1,0,0,1,1]");
@@ -322,7 +325,7 @@ TYPED_TEST(TestNumericCompareKernel, SimpleCompareScalarArray) {
   ValidateCompare<TypeParam>(neq, one, "[5,4,3,2,1,0]", "[1,1,1,1,0,1]");
   ValidateCompare<TypeParam>(neq, one, "[null,0,1,1]", "[null,1,0,0]");
 
-  CompareOptions gt(CompareOperator::GREATER);
+  CompareOptions gt(flatbuf::CompareOperator::GREATER);
   ValidateCompare<TypeParam>(gt, one, "[]", "[]");
   ValidateCompare<TypeParam>(gt, one, "[null]", "[null]");
   ValidateCompare<TypeParam>(gt, one, "[0,0,1,1,2,2]", "[1,1,0,0,0,0]");
@@ -330,7 +333,7 @@ TYPED_TEST(TestNumericCompareKernel, SimpleCompareScalarArray) {
   ValidateCompare<TypeParam>(gt, one, "[4,5,6,7,8,9]", "[0,0,0,0,0,0]");
   ValidateCompare<TypeParam>(gt, one, "[null,0,1,1]", "[null,1,0,0]");
 
-  CompareOptions gte(CompareOperator::GREATER_EQUAL);
+  CompareOptions gte(flatbuf::CompareOperator::GREATER_EQUAL);
   ValidateCompare<TypeParam>(gte, one, "[]", "[]");
   ValidateCompare<TypeParam>(gte, one, "[null]", "[null]");
   ValidateCompare<TypeParam>(gte, one, "[0,0,1,1,2,2]", "[1,1,1,1,0,0]");
@@ -338,7 +341,7 @@ TYPED_TEST(TestNumericCompareKernel, SimpleCompareScalarArray) {
   ValidateCompare<TypeParam>(gte, one, "[4,5,6,7,8,9]", "[0,0,0,0,0,0]");
   ValidateCompare<TypeParam>(gte, one, "[null,0,1,1]", "[null,1,1,1]");
 
-  CompareOptions lt(CompareOperator::LESS);
+  CompareOptions lt(flatbuf::CompareOperator::LESS);
   ValidateCompare<TypeParam>(lt, one, "[]", "[]");
   ValidateCompare<TypeParam>(lt, one, "[null]", "[null]");
   ValidateCompare<TypeParam>(lt, one, "[0,0,1,1,2,2]", "[0,0,0,0,1,1]");
@@ -346,7 +349,7 @@ TYPED_TEST(TestNumericCompareKernel, SimpleCompareScalarArray) {
   ValidateCompare<TypeParam>(lt, one, "[4,5,6,7,8,9]", "[1,1,1,1,1,1]");
   ValidateCompare<TypeParam>(lt, one, "[null,0,1,1]", "[null,0,0,0]");
 
-  CompareOptions lte(CompareOperator::LESS_EQUAL);
+  CompareOptions lte(flatbuf::CompareOperator::LESS_EQUAL);
   ValidateCompare<TypeParam>(lte, one, "[]", "[]");
   ValidateCompare<TypeParam>(lte, one, "[null]", "[null]");
   ValidateCompare<TypeParam>(lte, one, "[0,0,1,1,2,2]", "[0,0,1,1,1,1]");
@@ -362,7 +365,7 @@ TYPED_TEST(TestNumericCompareKernel, TestNullScalar) {
   Datum null(std::make_shared<ScalarType>());
   EXPECT_FALSE(null.scalar()->is_valid);
 
-  CompareOptions eq(CompareOperator::EQUAL);
+  CompareOptions eq(flatbuf::CompareOperator::EQUAL);
   ValidateCompare<TypeParam>(eq, "[]", null, "[]");
   ValidateCompare<TypeParam>(eq, null, "[]", "[]");
   ValidateCompare<TypeParam>(eq, "[null]", null, "[null]");
@@ -380,7 +383,7 @@ struct CompareRandomNumeric {
     auto rand = random::RandomArrayGenerator(0x5416447);
     const int64_t length = 1000;
     for (auto null_probability : {0.0, 0.01, 0.1, 0.25, 0.5, 1.0}) {
-      for (auto op : {EQUAL, NOT_EQUAL, GREATER, LESS_EQUAL}) {
+      for (auto op : {flatbuf::CompareOperator::EQUAL, flatbuf::CompareOperator::NOT_EQUAL, flatbuf::CompareOperator::GREATER, flatbuf::CompareOperator::LESS_EQUAL}) {
         auto data =
             rand.Numeric<typename Type::PhysicalType>(length, 0, 100, null_probability);
 
@@ -409,7 +412,7 @@ TEST(TestCompareKernel, PrimitiveRandomTests) {
 
 TYPED_TEST(TestNumericCompareKernel, SimpleCompareArrayArray) {
   /* Ensure that null scalar broadcast to all null results. */
-  CompareOptions eq(CompareOperator::EQUAL);
+  CompareOptions eq(flatbuf::CompareOperator::EQUAL);
   ValidateCompare<TypeParam>(eq, "[]", "[]", "[]");
   ValidateCompare<TypeParam>(eq, "[null]", "[null]", "[null]");
   ValidateCompare<TypeParam>(eq, "[1]", "[1]", "[1]");
@@ -417,7 +420,7 @@ TYPED_TEST(TestNumericCompareKernel, SimpleCompareArrayArray) {
   ValidateCompare<TypeParam>(eq, "[null]", "[1]", "[null]");
   ValidateCompare<TypeParam>(eq, "[1]", "[null]", "[null]");
 
-  CompareOptions lte(CompareOperator::LESS_EQUAL);
+  CompareOptions lte(flatbuf::CompareOperator::LESS_EQUAL);
   ValidateCompare<TypeParam>(lte, "[1,2,3,4,5]", "[2,3,4,5,6]", "[1,1,1,1,1]");
 }
 
@@ -425,7 +428,7 @@ TEST(TestCompareTimestamps, Basics) {
   const char* example1_json = R"(["1970-01-01","2000-02-29","1900-02-28"])";
   const char* example2_json = R"(["1970-01-02","2000-02-01","1900-02-28"])";
 
-  auto CheckArrayCase = [&](std::shared_ptr<DataType> type, CompareOperator op,
+  auto CheckArrayCase = [&](std::shared_ptr<DataType> type, flatbuf::CompareOperator op,
                             const char* expected_json) {
     auto lhs = ArrayFromJSON(type, example1_json);
     auto rhs = ArrayFromJSON(type, example2_json);
@@ -439,16 +442,16 @@ TEST(TestCompareTimestamps, Basics) {
   auto micros = timestamp(TimeUnit::MICRO);
   auto nanos = timestamp(TimeUnit::NANO);
 
-  CheckArrayCase(seconds, CompareOperator::EQUAL, "[false, false, true]");
-  CheckArrayCase(seconds, CompareOperator::NOT_EQUAL, "[true, true, false]");
-  CheckArrayCase(seconds, CompareOperator::LESS, "[true, false, false]");
-  CheckArrayCase(seconds, CompareOperator::LESS_EQUAL, "[true, false, true]");
-  CheckArrayCase(seconds, CompareOperator::GREATER, "[false, true, false]");
-  CheckArrayCase(seconds, CompareOperator::GREATER_EQUAL, "[false, true, true]");
+  CheckArrayCase(seconds, flatbuf::CompareOperator::EQUAL, "[false, false, true]");
+  CheckArrayCase(seconds, flatbuf::CompareOperator::NOT_EQUAL, "[true, true, false]");
+  CheckArrayCase(seconds, flatbuf::CompareOperator::LESS, "[true, false, false]");
+  CheckArrayCase(seconds, flatbuf::CompareOperator::LESS_EQUAL, "[true, false, true]");
+  CheckArrayCase(seconds, flatbuf::CompareOperator::GREATER, "[false, true, false]");
+  CheckArrayCase(seconds, flatbuf::CompareOperator::GREATER_EQUAL, "[false, true, true]");
 
   // Check that comparisons with tz-aware timestamps work fine
   auto seconds_utc = timestamp(TimeUnit::SECOND, "utc");
-  CheckArrayCase(seconds_utc, CompareOperator::EQUAL, "[false, false, true]");
+  CheckArrayCase(seconds_utc, flatbuf::CompareOperator::EQUAL, "[false, false, true]");
 }
 
 class TestStringCompareKernel : public ::testing::Test {};
@@ -456,7 +459,7 @@ class TestStringCompareKernel : public ::testing::Test {};
 TEST_F(TestStringCompareKernel, SimpleCompareArrayScalar) {
   Datum one(std::make_shared<StringScalar>("one"));
 
-  CompareOptions eq(CompareOperator::EQUAL);
+  CompareOptions eq(flatbuf::CompareOperator::EQUAL);
   ValidateCompare<StringType>(eq, "[]", one, "[]");
   ValidateCompare<StringType>(eq, "[null]", one, "[null]");
   ValidateCompare<StringType>(eq, "[\"zero\",\"zero\",\"one\",\"one\",\"two\",\"two\"]",
@@ -467,7 +470,7 @@ TEST_F(TestStringCompareKernel, SimpleCompareArrayScalar) {
       eq, "[\"five\",\"four\",\"three\",\"two\",\"one\",\"zero\"]", one, "[0,0,0,0,1,0]");
   ValidateCompare<StringType>(eq, "[null,\"zero\",\"one\",\"one\"]", one, "[null,0,1,1]");
 
-  CompareOptions neq(CompareOperator::NOT_EQUAL);
+  CompareOptions neq(flatbuf::CompareOperator::NOT_EQUAL);
   ValidateCompare<StringType>(neq, "[]", one, "[]");
   ValidateCompare<StringType>(neq, "[null]", one, "[null]");
   ValidateCompare<StringType>(neq, "[\"zero\",\"zero\",\"one\",\"one\",\"two\",\"two\"]",
@@ -481,7 +484,7 @@ TEST_F(TestStringCompareKernel, SimpleCompareArrayScalar) {
   ValidateCompare<StringType>(neq, "[null,\"zero\",\"one\",\"one\"]", one,
                               "[null,1,0,0]");
 
-  CompareOptions gt(CompareOperator::GREATER);
+  CompareOptions gt(flatbuf::CompareOperator::GREATER);
   ValidateCompare<StringType>(gt, "[]", one, "[]");
   ValidateCompare<StringType>(gt, "[null]", one, "[null]");
   ValidateCompare<StringType>(gt, "[\"zero\",\"zero\",\"one\",\"one\",\"two\",\"two\"]",
@@ -493,7 +496,7 @@ TEST_F(TestStringCompareKernel, SimpleCompareArrayScalar) {
                               one, "[0,0,1,1,0,0]");
   ValidateCompare<StringType>(gt, "[null,\"zero\",\"one\",\"one\"]", one, "[null,1,0,0]");
 
-  CompareOptions gte(CompareOperator::GREATER_EQUAL);
+  CompareOptions gte(flatbuf::CompareOperator::GREATER_EQUAL);
   ValidateCompare<StringType>(gte, "[]", one, "[]");
   ValidateCompare<StringType>(gte, "[null]", one, "[null]");
   ValidateCompare<StringType>(gte, "[\"zero\",\"zero\",\"one\",\"one\",\"two\",\"two\"]",
@@ -507,7 +510,7 @@ TEST_F(TestStringCompareKernel, SimpleCompareArrayScalar) {
   ValidateCompare<StringType>(gte, "[null,\"zero\",\"one\",\"one\"]", one,
                               "[null,1,1,1]");
 
-  CompareOptions lt(CompareOperator::LESS);
+  CompareOptions lt(flatbuf::CompareOperator::LESS);
   ValidateCompare<StringType>(lt, "[]", one, "[]");
   ValidateCompare<StringType>(lt, "[null]", one, "[null]");
   ValidateCompare<StringType>(lt, "[\"zero\",\"zero\",\"one\",\"one\",\"two\",\"two\"]",
@@ -519,7 +522,7 @@ TEST_F(TestStringCompareKernel, SimpleCompareArrayScalar) {
                               one, "[1,1,0,0,1,1]");
   ValidateCompare<StringType>(lt, "[null,\"zero\",\"one\",\"one\"]", one, "[null,0,0,0]");
 
-  CompareOptions lte(CompareOperator::LESS_EQUAL);
+  CompareOptions lte(flatbuf::CompareOperator::LESS_EQUAL);
   ValidateCompare<StringType>(lte, "[]", one, "[]");
   ValidateCompare<StringType>(lte, "[null]", one, "[null]");
   ValidateCompare<StringType>(lte, "[\"zero\",\"zero\",\"one\",\"one\",\"two\",\"two\"]",
@@ -540,7 +543,7 @@ TEST_F(TestStringCompareKernel, RandomCompareArrayScalar) {
   auto rand = random::RandomArrayGenerator(0x5416447);
   for (size_t i = 3; i < 10; i++) {
     for (auto null_probability : {0.0, 0.01, 0.1, 0.25, 0.5, 1.0}) {
-      for (auto op : {EQUAL, NOT_EQUAL, GREATER, LESS_EQUAL}) {
+      for (auto op : {flatbuf::CompareOperator::EQUAL, flatbuf::CompareOperator::NOT_EQUAL, flatbuf::CompareOperator::GREATER, flatbuf::CompareOperator::LESS_EQUAL}) {
         const int64_t length = static_cast<int64_t>(1ULL << i);
         auto array = Datum(rand.String(length, 0, 16, null_probability));
         auto hello = Datum(std::make_shared<ScalarType>("hello"));
@@ -556,7 +559,7 @@ TEST_F(TestStringCompareKernel, RandomCompareArrayArray) {
   auto rand = random::RandomArrayGenerator(0x5416447);
   for (size_t i = 3; i < 5; i++) {
     for (auto null_probability : {0.0, 0.01, 0.1, 0.25, 0.5, 1.0}) {
-      for (auto op : {EQUAL, NOT_EQUAL, GREATER, LESS_EQUAL}) {
+      for (auto op : {flatbuf::CompareOperator::EQUAL, flatbuf::CompareOperator::NOT_EQUAL, flatbuf::CompareOperator::GREATER, flatbuf::CompareOperator::LESS_EQUAL}) {
         const int64_t length = static_cast<int64_t>(1ULL << i);
         auto lhs = Datum(rand.String(length << i, 0, 16, null_probability));
         auto rhs = Datum(rand.String(length << i, 0, 16, null_probability));

@@ -98,22 +98,22 @@ Result<Datum> Compare(const Datum& left, const Datum& right, CompareOptions opti
                       ExecContext* ctx) {
   std::string func_name;
   switch (options.op) {
-    case CompareOperator::EQUAL:
+    case flatbuf::CompareOperator::EQUAL:
       func_name = "equal";
       break;
-    case CompareOperator::NOT_EQUAL:
+    case flatbuf::CompareOperator::NOT_EQUAL:
       func_name = "not_equal";
       break;
-    case CompareOperator::GREATER:
+    case flatbuf::CompareOperator::GREATER:
       func_name = "greater";
       break;
-    case CompareOperator::GREATER_EQUAL:
+    case flatbuf::CompareOperator::GREATER_EQUAL:
       func_name = "greater_equal";
       break;
-    case CompareOperator::LESS:
+    case flatbuf::CompareOperator::LESS:
       func_name = "less";
       break;
-    case CompareOperator::LESS_EQUAL:
+    case flatbuf::CompareOperator::LESS_EQUAL:
       func_name = "less_equal";
       break;
   }

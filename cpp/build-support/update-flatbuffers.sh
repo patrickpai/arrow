@@ -32,6 +32,7 @@ $FLATC -o $SOURCE_DIR/generated \
       $FORMAT_DIR/Schema.fbs \
       $FORMAT_DIR/Tensor.fbs \
       $FORMAT_DIR/SparseTensor.fbs \
+      $FORMAT_DIR/Expression.fbs \
       src/arrow/ipc/feather.fbs
 
 $FLATC -o $SOURCE_DIR/plasma \
