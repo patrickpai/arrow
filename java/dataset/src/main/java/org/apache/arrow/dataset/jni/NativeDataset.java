@@ -41,7 +41,12 @@ public class NativeDataset implements Dataset {
       throw new NativeInstanceReleasedException();
     }
     JniWrapper wrapper = JniWrapper.get();
-    long scannerId = wrapper.createScanner(datasetId, options.getColumns(), options.getBatchSize(), options.getFilterMemoryAddress(), options.getFilterSize());
+
+    String[] columns = options.getColumns();
+    long batchSize = options.getBatchSize();
+    byte[] filter = options.getFilter();
+
+    long scannerId = wrapper.createScanner(datasetId, columns, batchSize, filter);
     return new NativeScanner(context, scannerId);
   }
 

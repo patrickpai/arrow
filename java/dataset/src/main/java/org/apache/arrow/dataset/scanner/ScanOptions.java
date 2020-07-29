@@ -17,8 +17,12 @@
 
 package org.apache.arrow.dataset.scanner;
 
-import org.apache.arrow.memory.ArrowBuf;
-import org.apache.arrow.memory.RootAllocator;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.channels.Channels;
+
+import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.ipc.ArrowFileWriter;
 
 /**
  * Options used during scanning.
@@ -26,23 +30,24 @@ import org.apache.arrow.memory.RootAllocator;
 public class ScanOptions {
   private final String[] columns;
   private final long batchSize;
-  private ArrowBuf filterBuffer;
-  private long filterSize = -1; // size in bytes
+  private final byte[] filter;
+
+  public ScanOptions(String[] columns, long batchSize) throws Exception {
+    this(columns, batchSize, null);
+  }
 
   /**
    * Constructor.
-   * @param columns Projected columns
-   * @param batchSize Maximum row number of each returned {@link org.apache.arrow.vector.VectorSchemaRoot}
+   * 
+   * @param columns     Projected columns
+   * @param batchSize   Maximum row number of each returned {@link org.apache.arrow.vector.VectorSchemaRoot}
+   * @param filter      Filter in record batch representation
+   * @throws Exception  On error
    */
-  public ScanOptions(String[] columns, long batchSize) {
+  public ScanOptions(String[] columns, long batchSize, VectorSchemaRoot filter) throws Exception {
     this.columns = columns;
     this.batchSize = batchSize;
-  }
-
-  public ScanOptions(String[] columns, long batchSize, String filterAsHexString) {
-    this.columns = columns;
-    this.batchSize = batchSize;
-    this.filterBuffer = writeFilterToDirectBuffer(filterAsHexString);
+    this.filter = writeFilterToByteArray(filter);
   }
 
   public String[] getColumns() {
@@ -53,28 +58,34 @@ public class ScanOptions {
     return batchSize;
   }
 
-  public long getFilterMemoryAddress() {
-    return filterBuffer != null ? filterBuffer.memoryAddress() : -1; // TODO: fix
-//    return filterBuffer.memoryAddress();
+  public byte[] getFilter() {
+    return filter;
   }
 
-  public long getFilterSize() {
-    return filterSize;
-  }
-
-  private ArrowBuf writeFilterToDirectBuffer(String filterAsHexString) {
-    RootAllocator allocator = new RootAllocator(4096); // TODO: adjust limit
-    ArrowBuf buffer = allocator.buffer(filterAsHexString.length() / 2); // TODO: adjust based on binary or hex string
-
-    // write filter to buffer here
-    for (int i = 0, j = 0; i < filterAsHexString.length(); i += 2, j++) {
-      String byteInHex = filterAsHexString.substring(i, i + 2);
-      int num = Integer.parseUnsignedInt(byteInHex, 16);
-      buffer.setByte(j, num);
+  /**
+   * Writes a filter (in record batch representation) to a byte array using IPC file format.
+   * 
+   * Returns byte array containing filter if the write was successful.
+   * Otherwise, returns null;
+   * 
+   * @param root VectorSchemaRoot containing filter in record batch representation
+   */
+  private byte[] writeFilterToByteArray(VectorSchemaRoot root) throws Exception {
+    if (root == null) {
+      return null;
     }
+    
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
 
-    this.filterSize = filterAsHexString.length() / 2; // TODO: adjust
+    try (ArrowFileWriter writer = new ArrowFileWriter(root, null, Channels.newChannel(out))) {
+      // Write filter (in record batch representation) to IPC file format
+      writer.start();
+      writer.writeBatch();
+      writer.end();
 
-    return buffer;
+      return out.toByteArray();
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to write filter to byte array.", e);
+    }
   }
 }

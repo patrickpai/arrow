@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -35,19 +36,33 @@ import org.apache.arrow.dataset.jni.NativeScanner;
 import org.apache.arrow.dataset.jni.TestNativeDataset;
 import org.apache.arrow.dataset.scanner.ScanOptions;
 import org.apache.arrow.dataset.scanner.ScanTask;
+import org.apache.arrow.flatbuf.Int;
+import org.apache.arrow.memory.ArrowBuf;
+import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.FieldVector;
+import org.apache.arrow.vector.IntVector;
+import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorLoader;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.ipc.ArrowFileReader;
+import org.apache.arrow.vector.ipc.message.ArrowBlock;
+import org.apache.arrow.vector.ipc.message.ArrowFieldNode;
 import org.apache.arrow.vector.ipc.message.ArrowRecordBatch;
 import org.apache.arrow.vector.types.Types;
+import org.apache.arrow.vector.types.Types.MinorType;
 import org.apache.arrow.vector.types.pojo.Schema;
+import org.apache.arrow.vector.util.ByteArrayReadableSeekableByteChannel;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 import org.junit.rules.TemporaryFolder;
+import org.apache.arrow.vector.complex.StructVector;
+import org.apache.arrow.vector.types.pojo.ArrowType;
+import org.apache.arrow.vector.types.pojo.FieldType;
 
 public class TestFileSystemDataset extends TestNativeDataset {
 
@@ -62,8 +77,54 @@ public class TestFileSystemDataset extends TestNativeDataset {
 
     FileSystemDatasetFactory factory = new FileSystemDatasetFactory(rootAllocator(),
             FileFormat.PARQUET, writeSupport.getOutputURI());
-    String filterAsHexString = "4152524F57310000FFFFFFFFB80100001000000000000A000C000600050008000A000000000103000C0000000800080000000400080000000400000004000000EC000000640000003400000004000000CCFEFFFF000001021C0000000C000000040000000000000000FFFFFF00000001200000000000000000000000F8FEFFFF000001021C0000000C00000004000000000000002CFFFFFF0000000120000000000000000000000024FFFFFF0000010D7400000014000000040000000200000038000000080000001CFFFFFF48FFFFFF000001021C0000000C00000004000000000000007CFFFFFF0000000120000000000000000000000074FFFFFF000001021C0000000C0000000400000000000000A8FFFFFF000000012000000000000000000000000000000000000000A8FFFFFF0000010D880000001400000004000000020000005000000008000000A0FFFFFFCCFFFFFF000001022400000014000000040000000000000008000C00080007000800000000000001200000000000000000000000100014000800060007000C000000100010000000000001051800000010000000040000000000000004000400040000000000000000000000000000000000000000000000FFFFFFFFC801000014000000000000000C0016000600050008000C000C0000000003030018000000380000000000000000000A0018000C00040008000A0000000C010000100000000100000000000000000000000F000000000000000000000000000000000000000000000000000000000000000000000000000000000000000800000000000000080000000000000002000000000000001000000000000000000000000000000010000000000000000400000000000000180000000000000000000000000000001800000000000000000000000000000018000000000000000400000000000000200000000000000000000000000000002000000000000000040000000000000028000000000000000000000000000000280000000000000004000000000000003000000000000000000000000000000030000000000000000400000000000000000000000800000001000000000000000000000000000000010000000000000000000000000000000100000000000000000000000000000001000000000000000000000000000000010000000000000000000000000000000100000000000000000000000000000001000000000000000000000000000000010000000000000000000000000000000000000002000000696400000000000000000000000000000200000000000000010000000000000002000000000000000600000000000000FFFFFFFF00000000100000000C001400060008000C0010000C0000000000030038000000280000000400000001000000C801000000000000D001000000000000380000000000000000000000000000000800080000000400080000000400000004000000EC000000640000003400000004000000CCFEFFFF000001021C0000000C000000040000000000000000FFFFFF00000001200000000000000000000000F8FEFFFF000001021C0000000C00000004000000000000002CFFFFFF0000000120000000000000000000000024FFFFFF0000010D7400000014000000040000000200000038000000080000001CFFFFFF48FFFFFF000001021C0000000C00000004000000000000007CFFFFFF0000000120000000000000000000000074FFFFFF000001021C0000000C0000000400000000000000A8FFFFFF000000012000000000000000000000000000000000000000A8FFFFFF0000010D880000001400000004000000020000005000000008000000A0FFFFFFCCFFFFFF000001022400000014000000040000000000000008000C00080007000800000000000001200000000000000000000000100014000800060007000C0000001000100000000000010518000000100000000400000000000000040004000400000000000000000000000000000000000000E00100004152524F5731";
-    ScanOptions options = new ScanOptions(new String[0], 100, filterAsHexString);
+
+    FieldType structFieldType = FieldType.nullable(ArrowType.Struct.INSTANCE);
+    FieldType int32FieldType = FieldType.nullable(new ArrowType.Int(32, true));
+    FieldType varCharFieldType = FieldType.nullable(new ArrowType.Utf8());
+    
+    // Child 1
+    StructVector child1 = new StructVector("1", rootAllocator(), structFieldType, null);
+    VarCharVector child1SubChild1 = child1.addOrGet("1-1", varCharFieldType, VarCharVector.class);
+    child1SubChild1.allocateNew();
+    child1SubChild1.setSafe(0, "id".getBytes());
+    child1SubChild1.setValueCount(1);
+    IntVector child1SubChild2 = child1.addOrGet("1-2", int32FieldType, IntVector.class);
+    child1SubChild2.allocateNew();
+    child1SubChild2.setSafe(0, 0);
+    child1SubChild2.setValueCount(1);
+    child1.setIndexDefined(0);
+    child1.setIndexDefined(1);
+
+    // Child 2
+    StructVector child2 = new StructVector("2", rootAllocator(), structFieldType, null);
+    IntVector child2SubChild1 = child2.addOrGet("2-1", int32FieldType, IntVector.class);
+    child2SubChild1.allocateNew();
+    child2SubChild1.setSafe(0, 2);
+    child2SubChild1.setValueCount(1);
+    IntVector child2SubChild2 = child2.addOrGet("2-2", int32FieldType, IntVector.class);
+    child2SubChild2.allocateNew();
+    child2SubChild2.setSafe(0, 1);
+    child2SubChild2.setValueCount(1);
+    child2.setIndexDefined(0);
+    child2.setIndexDefined(1);
+
+    // Child 3
+    IntVector child3 = new IntVector("3", int32FieldType, rootAllocator());
+    child3.allocateNew();
+    child3.setSafe(0, 2);
+    child3.setValueCount(1);
+
+    // Child 4
+    IntVector child4 = new IntVector("4", int32FieldType, rootAllocator());
+    child4.allocateNew();
+    child4.setSafe(0, 6);
+    child4.setValueCount(1);
+    
+    List<FieldVector> allVectors = List.of(child1, child2, child3, child4);
+    VectorSchemaRoot vectorSchemaRoot = new VectorSchemaRoot(allVectors);
+    vectorSchemaRoot.setRowCount(1);
+
+    ScanOptions options = new ScanOptions(new String[0], 100, vectorSchemaRoot);
     Schema schema = inferResultSchemaFromFactory(factory, options);
     List<ArrowRecordBatch> datum = collectResultFromFactory(factory, options);
 
@@ -77,6 +138,7 @@ public class TestFileSystemDataset extends TestNativeDataset {
 
     checkParquetReadResult(schema, writeSupport.getWrittenRecords().subList(2,3), datum);
 
+    AutoCloseables.close(vectorSchemaRoot);
     AutoCloseables.close(datum);
   }
 
