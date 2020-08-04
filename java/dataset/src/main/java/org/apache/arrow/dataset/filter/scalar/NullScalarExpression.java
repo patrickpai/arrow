@@ -18,56 +18,30 @@
 package org.apache.arrow.dataset.filter.scalar;
 
 import org.apache.arrow.dataset.filter.Expression;
-import org.apache.arrow.dataset.filter.scalar.ScalarExpression;
-import org.apache.arrow.dataset.filter.util.Util;
-import org.apache.arrow.memory.ArrowBuf;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.complex.StructVector;
-import org.apache.arrow.vector.holders.BitHolder;
-import org.apache.arrow.vector.holders.NullableBitHolder;
 
-public class BoolExpression extends ScalarExpression {
+public class NullScalarExpression extends ScalarExpression {
 
-    private final NullableBitHolder holder;
+    private final Expression expr;
 
-    public BoolExpression(BitHolder holder) {
-        this(holder.isSet, holder.value);
-    }
-
-    public BoolExpression(NullableBitHolder holder) {
-        this(holder.isSet, holder.value);
-    }
-
-    private BoolExpression(int isSet, int value) {
-        NullableBitHolder clone = new NullableBitHolder();
-        clone.isSet = isSet;
-        if (clone.isSet == Util.INT_VALUE_IF_IS_SET_TRUE) {
-            clone.value = value;
-        }
-
-        this.holder = clone;
+    public NullScalarExpression(ScalarExpression expr) {
+        this.expr = expr.deepClone();
     }
 
     @Override
     public StructVector toVector(String vectorName, BufferAllocator allocator) {
-        StructVector vector = new StructVector(vectorName, allocator, Expression.structVectorFieldType, null);
-        
-        Util.addBitVectorAsChild(vector, "c1", holder);
-        Util.addIntVectorAsChild(vector, "c2", ScalarExpression.TYPE);
-
-        vector.setValueCount(2);
-        
-        return vector;
+        return expr.toVector("c1", allocator);
     }
 
     @Override
     public Expression deepClone() {
-        return new BoolExpression(holder);
+        return new NullScalarExpression((ScalarExpression) expr);
     }
 
     @Override
     public void close() throws Exception {
-        // noop
+        AutoCloseables.close(expr);
     }
 }

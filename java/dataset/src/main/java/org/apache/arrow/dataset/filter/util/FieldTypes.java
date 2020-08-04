@@ -80,4 +80,7 @@ public final class FieldTypes {
     public static final FieldType TIMESTAMP(TimeUnit timeUnit, String timezone) {
         return FieldType.nullable(new ArrowType.Timestamp(timeUnit, timezone));
     }
+    
+    // Null type
+    public static final FieldType NULL = FieldType.nullable(new ArrowType.Null());
 }
