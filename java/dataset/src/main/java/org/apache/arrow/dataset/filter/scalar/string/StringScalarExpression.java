@@ -24,28 +24,28 @@ import org.apache.arrow.memory.ArrowBuf;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.complex.StructVector;
-import org.apache.arrow.vector.holders.LargeVarCharHolder;
-import org.apache.arrow.vector.holders.NullableLargeVarCharHolder;
+import org.apache.arrow.vector.holders.VarCharHolder;
+import org.apache.arrow.vector.holders.NullableVarCharHolder;
 
-public class LargeStringExpression extends ScalarExpression {
+public class StringScalarExpression extends ScalarExpression {
 
-    private final NullableLargeVarCharHolder holder;
+    private final NullableVarCharHolder holder;
     private final BufferAllocator allocator;
 
-    public LargeStringExpression(BufferAllocator allocator, LargeVarCharHolder holder) {
+    public StringScalarExpression(BufferAllocator allocator, VarCharHolder holder) {
         this(allocator, holder.isSet, holder.buffer, holder.start, holder.end);
     }
 
-    public LargeStringExpression(BufferAllocator allocator, NullableLargeVarCharHolder holder) {
+    public StringScalarExpression(BufferAllocator allocator, NullableVarCharHolder holder) {
         this(allocator, holder.isSet, holder.buffer, holder.start, holder.end);
     }
 
-    private LargeStringExpression(BufferAllocator allocator, int isSet, ArrowBuf buffer, long start, long end) {
-        NullableLargeVarCharHolder clone = new NullableLargeVarCharHolder();
+    private StringScalarExpression(BufferAllocator allocator, int isSet, ArrowBuf buffer, int start, int end) {
+        NullableVarCharHolder clone = new NullableVarCharHolder();
         clone.isSet = isSet;
 
         if (clone.isSet == Util.INT_VALUE_IF_IS_SET_TRUE) {
-            long bufferLength = end - start;
+            int bufferLength = end - start;
             ArrowBuf bufferCopy = allocator.buffer(bufferLength);
             bufferCopy.setBytes(0, buffer, start, bufferLength);
     
@@ -62,7 +62,7 @@ public class LargeStringExpression extends ScalarExpression {
     public StructVector toVector(String vectorName, BufferAllocator allocator) {
         StructVector vector = new StructVector(vectorName, allocator, Expression.structVectorFieldType, null);
         
-        Util.addLargeVarCharVectorAsChild(vector, "c1", holder);
+        Util.addVarCharVectorAsChild(vector, "c1", holder);
         Util.addIntVectorAsChild(vector, "c2", ScalarExpression.TYPE);
 
         vector.setValueCount(2);
@@ -72,7 +72,7 @@ public class LargeStringExpression extends ScalarExpression {
 
     @Override
     public Expression deepClone() {
-        return new LargeStringExpression(allocator, holder);
+        return new StringScalarExpression(allocator, holder);
     }
 
     @Override

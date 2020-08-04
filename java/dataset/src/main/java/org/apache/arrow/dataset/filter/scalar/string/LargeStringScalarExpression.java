@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.arrow.dataset.filter.scalar.timestamp;
+package org.apache.arrow.dataset.filter.scalar.string;
 
 import org.apache.arrow.dataset.filter.Expression;
 import org.apache.arrow.dataset.filter.scalar.ScalarExpression;
@@ -24,37 +24,45 @@ import org.apache.arrow.memory.ArrowBuf;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.complex.StructVector;
-import org.apache.arrow.vector.holders.TimeStampNanoHolder;
-import org.apache.arrow.vector.holders.NullableTimeStampNanoHolder;
+import org.apache.arrow.vector.holders.LargeVarCharHolder;
+import org.apache.arrow.vector.holders.NullableLargeVarCharHolder;
 
-public class TimeStampNanoExpression extends TimeStampExpression {
+public class LargeStringScalarExpression extends ScalarExpression {
 
-    private final NullableTimeStampNanoHolder holder;
+    private final NullableLargeVarCharHolder holder;
+    private final BufferAllocator allocator;
 
-    public TimeStampNanoExpression(TimeStampNanoHolder holder) {
-        this(holder.isSet, holder.value);
+    public LargeStringScalarExpression(BufferAllocator allocator, LargeVarCharHolder holder) {
+        this(allocator, holder.isSet, holder.buffer, holder.start, holder.end);
     }
 
-    public TimeStampNanoExpression(NullableTimeStampNanoHolder holder) {
-        this(holder.isSet, holder.value);
+    public LargeStringScalarExpression(BufferAllocator allocator, NullableLargeVarCharHolder holder) {
+        this(allocator, holder.isSet, holder.buffer, holder.start, holder.end);
     }
 
-    private TimeStampNanoExpression(int isSet, long value) {
-        NullableTimeStampNanoHolder clone = new NullableTimeStampNanoHolder();
+    private LargeStringScalarExpression(BufferAllocator allocator, int isSet, ArrowBuf buffer, long start, long end) {
+        NullableLargeVarCharHolder clone = new NullableLargeVarCharHolder();
         clone.isSet = isSet;
 
         if (clone.isSet == Util.INT_VALUE_IF_IS_SET_TRUE) {
-            clone.value = value;
+            long bufferLength = end - start;
+            ArrowBuf bufferCopy = allocator.buffer(bufferLength);
+            bufferCopy.setBytes(0, buffer, start, bufferLength);
+    
+            clone.start = 0;
+            clone.end = bufferLength;
+            clone.buffer = bufferCopy;
         }
 
         this.holder = clone;
+        this.allocator = allocator;
     }
 
     @Override
     public StructVector toVector(String vectorName, BufferAllocator allocator) {
         StructVector vector = new StructVector(vectorName, allocator, Expression.structVectorFieldType, null);
         
-        Util.addTimeStampNanoVectorAsChild(vector, "c1", holder);
+        Util.addLargeVarCharVectorAsChild(vector, "c1", holder);
         Util.addIntVectorAsChild(vector, "c2", ScalarExpression.TYPE);
 
         vector.setValueCount(2);
@@ -64,6 +72,11 @@ public class TimeStampNanoExpression extends TimeStampExpression {
 
     @Override
     public Expression deepClone() {
-        return new TimeStampNanoExpression(holder);
+        return new LargeStringScalarExpression(allocator, holder);
+    }
+
+    @Override
+    public void close() throws Exception {
+        AutoCloseables.close(holder.buffer);
     }
 }

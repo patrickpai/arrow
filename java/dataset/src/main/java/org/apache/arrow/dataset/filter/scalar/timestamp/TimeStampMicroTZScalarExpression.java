@@ -27,19 +27,19 @@ import org.apache.arrow.vector.complex.StructVector;
 import org.apache.arrow.vector.holders.TimeStampMicroTZHolder;
 import org.apache.arrow.vector.holders.NullableTimeStampMicroTZHolder;
 
-public class TimeStampMicroTZExpression extends TimeStampExpression {
+public class TimeStampMicroTZScalarExpression extends TimeStampScalarExpression {
 
     private final NullableTimeStampMicroTZHolder holder;
 
-    public TimeStampMicroTZExpression(TimeStampMicroTZHolder holder) {
+    public TimeStampMicroTZScalarExpression(TimeStampMicroTZHolder holder) {
         this(holder.isSet, holder.timezone, holder.value);
     }
 
-    public TimeStampMicroTZExpression(NullableTimeStampMicroTZHolder holder) {
+    public TimeStampMicroTZScalarExpression(NullableTimeStampMicroTZHolder holder) {
         this(holder.isSet, holder.timezone, holder.value);
     }
 
-    private TimeStampMicroTZExpression(int isSet, String timezone, long value) {
+    private TimeStampMicroTZScalarExpression(int isSet, String timezone, long value) {
         NullableTimeStampMicroTZHolder clone = new NullableTimeStampMicroTZHolder();
         clone.isSet = isSet;
 
@@ -65,6 +65,6 @@ public class TimeStampMicroTZExpression extends TimeStampExpression {
 
     @Override
     public Expression deepClone() {
-        return new TimeStampMicroTZExpression(holder);
+        return new TimeStampMicroTZScalarExpression(holder);
     }
 }

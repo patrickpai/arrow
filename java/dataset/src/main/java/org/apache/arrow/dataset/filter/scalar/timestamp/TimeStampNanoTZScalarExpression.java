@@ -24,23 +24,23 @@ import org.apache.arrow.memory.ArrowBuf;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.complex.StructVector;
-import org.apache.arrow.vector.holders.TimeStampMilliTZHolder;
-import org.apache.arrow.vector.holders.NullableTimeStampMilliTZHolder;
+import org.apache.arrow.vector.holders.TimeStampNanoTZHolder;
+import org.apache.arrow.vector.holders.NullableTimeStampNanoTZHolder;
 
-public class TimeStampMilliTZExpression extends TimeStampExpression {
+public class TimeStampNanoTZScalarExpression extends TimeStampScalarExpression {
 
-    private final NullableTimeStampMilliTZHolder holder;
+    private final NullableTimeStampNanoTZHolder holder;
 
-    public TimeStampMilliTZExpression(TimeStampMilliTZHolder holder) {
+    public TimeStampNanoTZScalarExpression(TimeStampNanoTZHolder holder) {
         this(holder.isSet, holder.timezone, holder.value);
     }
 
-    public TimeStampMilliTZExpression(NullableTimeStampMilliTZHolder holder) {
+    public TimeStampNanoTZScalarExpression(NullableTimeStampNanoTZHolder holder) {
         this(holder.isSet, holder.timezone, holder.value);
     }
 
-    private TimeStampMilliTZExpression(int isSet, String timezone, long value) {
-        NullableTimeStampMilliTZHolder clone = new NullableTimeStampMilliTZHolder();
+    private TimeStampNanoTZScalarExpression(int isSet, String timezone, long value) {
+        NullableTimeStampNanoTZHolder clone = new NullableTimeStampNanoTZHolder();
         clone.isSet = isSet;
 
         if (clone.isSet == Util.INT_VALUE_IF_IS_SET_TRUE) {
@@ -55,7 +55,7 @@ public class TimeStampMilliTZExpression extends TimeStampExpression {
     public StructVector toVector(String vectorName, BufferAllocator allocator) {
         StructVector vector = new StructVector(vectorName, allocator, Expression.structVectorFieldType, null);
         
-        Util.addTimeStampMilliTZVectorAsChild(vector, "c1", holder);
+        Util.addTimeStampNanoTZVectorAsChild(vector, "c1", holder);
         Util.addIntVectorAsChild(vector, "c2", ScalarExpression.TYPE);
 
         vector.setValueCount(2);
@@ -65,6 +65,6 @@ public class TimeStampMilliTZExpression extends TimeStampExpression {
 
     @Override
     public Expression deepClone() {
-        return new TimeStampMilliTZExpression(holder);
+        return new TimeStampNanoTZScalarExpression(holder);
     }
 }

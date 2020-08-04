@@ -24,23 +24,23 @@ import org.apache.arrow.memory.ArrowBuf;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.complex.StructVector;
-import org.apache.arrow.vector.holders.TimeStampMilliHolder;
-import org.apache.arrow.vector.holders.NullableTimeStampMilliHolder;
+import org.apache.arrow.vector.holders.TimeStampNanoHolder;
+import org.apache.arrow.vector.holders.NullableTimeStampNanoHolder;
 
-public class TimeStampMilliExpression extends TimeStampExpression {
+public class TimeStampNanoScalarExpression extends TimeStampScalarExpression {
 
-    private final NullableTimeStampMilliHolder holder;
+    private final NullableTimeStampNanoHolder holder;
 
-    public TimeStampMilliExpression(TimeStampMilliHolder holder) {
+    public TimeStampNanoScalarExpression(TimeStampNanoHolder holder) {
         this(holder.isSet, holder.value);
     }
 
-    public TimeStampMilliExpression(NullableTimeStampMilliHolder holder) {
+    public TimeStampNanoScalarExpression(NullableTimeStampNanoHolder holder) {
         this(holder.isSet, holder.value);
     }
 
-    private TimeStampMilliExpression(int isSet, long value) {
-        NullableTimeStampMilliHolder clone = new NullableTimeStampMilliHolder();
+    private TimeStampNanoScalarExpression(int isSet, long value) {
+        NullableTimeStampNanoHolder clone = new NullableTimeStampNanoHolder();
         clone.isSet = isSet;
 
         if (clone.isSet == Util.INT_VALUE_IF_IS_SET_TRUE) {
@@ -54,7 +54,7 @@ public class TimeStampMilliExpression extends TimeStampExpression {
     public StructVector toVector(String vectorName, BufferAllocator allocator) {
         StructVector vector = new StructVector(vectorName, allocator, Expression.structVectorFieldType, null);
         
-        Util.addTimeStampMilliVectorAsChild(vector, "c1", holder);
+        Util.addTimeStampNanoVectorAsChild(vector, "c1", holder);
         Util.addIntVectorAsChild(vector, "c2", ScalarExpression.TYPE);
 
         vector.setValueCount(2);
@@ -64,6 +64,6 @@ public class TimeStampMilliExpression extends TimeStampExpression {
 
     @Override
     public Expression deepClone() {
-        return new TimeStampMilliExpression(holder);
+        return new TimeStampNanoScalarExpression(holder);
     }
 }

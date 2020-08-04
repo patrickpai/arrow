@@ -19,7 +19,7 @@ package org.apache.arrow.dataset.filter.scalar.timestamp;
 
 import org.apache.arrow.dataset.filter.scalar.ScalarExpression;
 
-public abstract class TimeStampExpression extends ScalarExpression {
+public abstract class TimeStampScalarExpression extends ScalarExpression {
     
     @Override
     public void close() throws Exception {

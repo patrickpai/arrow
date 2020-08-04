@@ -24,26 +24,27 @@ import org.apache.arrow.memory.ArrowBuf;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.complex.StructVector;
-import org.apache.arrow.vector.holders.TimeStampMicroHolder;
-import org.apache.arrow.vector.holders.NullableTimeStampMicroHolder;
+import org.apache.arrow.vector.holders.TimeStampSecTZHolder;
+import org.apache.arrow.vector.holders.NullableTimeStampSecTZHolder;
 
-public class TimeStampMicroExpression extends TimeStampExpression {
+public class TimeStampSecTZScalarExpression extends TimeStampScalarExpression {
 
-    private final NullableTimeStampMicroHolder holder;
+    private final NullableTimeStampSecTZHolder holder;
 
-    public TimeStampMicroExpression(TimeStampMicroHolder holder) {
-        this(holder.isSet, holder.value);
+    public TimeStampSecTZScalarExpression(TimeStampSecTZHolder holder) {
+        this(holder.isSet, holder.timezone, holder.value);
     }
 
-    public TimeStampMicroExpression(NullableTimeStampMicroHolder holder) {
-        this(holder.isSet, holder.value);
+    public TimeStampSecTZScalarExpression(NullableTimeStampSecTZHolder holder) {
+        this(holder.isSet, holder.timezone, holder.value);
     }
 
-    private TimeStampMicroExpression(int isSet, long value) {
-        NullableTimeStampMicroHolder clone = new NullableTimeStampMicroHolder();
+    private TimeStampSecTZScalarExpression(int isSet, String timezone, long value) {
+        NullableTimeStampSecTZHolder clone = new NullableTimeStampSecTZHolder();
         clone.isSet = isSet;
 
         if (clone.isSet == Util.INT_VALUE_IF_IS_SET_TRUE) {
+            clone.timezone = timezone;
             clone.value = value;
         }
 
@@ -54,7 +55,7 @@ public class TimeStampMicroExpression extends TimeStampExpression {
     public StructVector toVector(String vectorName, BufferAllocator allocator) {
         StructVector vector = new StructVector(vectorName, allocator, Expression.structVectorFieldType, null);
         
-        Util.addTimeStampMicroVectorAsChild(vector, "c1", holder);
+        Util.addTimeStampSecTZVectorAsChild(vector, "c1", holder);
         Util.addIntVectorAsChild(vector, "c2", ScalarExpression.TYPE);
 
         vector.setValueCount(2);
@@ -64,6 +65,6 @@ public class TimeStampMicroExpression extends TimeStampExpression {
 
     @Override
     public Expression deepClone() {
-        return new TimeStampMicroExpression(holder);
+        return new TimeStampSecTZScalarExpression(holder);
     }
 }

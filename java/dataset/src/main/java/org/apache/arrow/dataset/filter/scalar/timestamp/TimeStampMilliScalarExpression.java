@@ -24,23 +24,23 @@ import org.apache.arrow.memory.ArrowBuf;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.complex.StructVector;
-import org.apache.arrow.vector.holders.TimeStampSecHolder;
-import org.apache.arrow.vector.holders.NullableTimeStampSecHolder;
+import org.apache.arrow.vector.holders.TimeStampMilliHolder;
+import org.apache.arrow.vector.holders.NullableTimeStampMilliHolder;
 
-public class TimeStampSecExpression extends TimeStampExpression {
+public class TimeStampMilliScalarExpression extends TimeStampScalarExpression {
 
-    private final NullableTimeStampSecHolder holder;
+    private final NullableTimeStampMilliHolder holder;
 
-    public TimeStampSecExpression(TimeStampSecHolder holder) {
+    public TimeStampMilliScalarExpression(TimeStampMilliHolder holder) {
         this(holder.isSet, holder.value);
     }
 
-    public TimeStampSecExpression(NullableTimeStampSecHolder holder) {
+    public TimeStampMilliScalarExpression(NullableTimeStampMilliHolder holder) {
         this(holder.isSet, holder.value);
     }
 
-    private TimeStampSecExpression(int isSet, long value) {
-        NullableTimeStampSecHolder clone = new NullableTimeStampSecHolder();
+    private TimeStampMilliScalarExpression(int isSet, long value) {
+        NullableTimeStampMilliHolder clone = new NullableTimeStampMilliHolder();
         clone.isSet = isSet;
 
         if (clone.isSet == Util.INT_VALUE_IF_IS_SET_TRUE) {
@@ -54,7 +54,7 @@ public class TimeStampSecExpression extends TimeStampExpression {
     public StructVector toVector(String vectorName, BufferAllocator allocator) {
         StructVector vector = new StructVector(vectorName, allocator, Expression.structVectorFieldType, null);
         
-        Util.addTimeStampSecVectorAsChild(vector, "c1", holder);
+        Util.addTimeStampMilliVectorAsChild(vector, "c1", holder);
         Util.addIntVectorAsChild(vector, "c2", ScalarExpression.TYPE);
 
         vector.setValueCount(2);
@@ -64,6 +64,6 @@ public class TimeStampSecExpression extends TimeStampExpression {
 
     @Override
     public Expression deepClone() {
-        return new TimeStampSecExpression(holder);
+        return new TimeStampMilliScalarExpression(holder);
     }
 }

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.arrow.dataset.filter.scalar.string;
+package org.apache.arrow.dataset.filter.scalar.timestamp;
 
 import org.apache.arrow.dataset.filter.Expression;
 import org.apache.arrow.dataset.filter.scalar.ScalarExpression;
@@ -24,45 +24,38 @@ import org.apache.arrow.memory.ArrowBuf;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.complex.StructVector;
-import org.apache.arrow.vector.holders.VarCharHolder;
-import org.apache.arrow.vector.holders.NullableVarCharHolder;
+import org.apache.arrow.vector.holders.TimeStampMilliTZHolder;
+import org.apache.arrow.vector.holders.NullableTimeStampMilliTZHolder;
 
-public class StringExpression extends ScalarExpression {
+public class TimeStampMilliTZScalarExpression extends TimeStampScalarExpression {
 
-    private final NullableVarCharHolder holder;
-    private final BufferAllocator allocator;
+    private final NullableTimeStampMilliTZHolder holder;
 
-    public StringExpression(BufferAllocator allocator, VarCharHolder holder) {
-        this(allocator, holder.isSet, holder.buffer, holder.start, holder.end);
+    public TimeStampMilliTZScalarExpression(TimeStampMilliTZHolder holder) {
+        this(holder.isSet, holder.timezone, holder.value);
     }
 
-    public StringExpression(BufferAllocator allocator, NullableVarCharHolder holder) {
-        this(allocator, holder.isSet, holder.buffer, holder.start, holder.end);
+    public TimeStampMilliTZScalarExpression(NullableTimeStampMilliTZHolder holder) {
+        this(holder.isSet, holder.timezone, holder.value);
     }
 
-    private StringExpression(BufferAllocator allocator, int isSet, ArrowBuf buffer, int start, int end) {
-        NullableVarCharHolder clone = new NullableVarCharHolder();
+    private TimeStampMilliTZScalarExpression(int isSet, String timezone, long value) {
+        NullableTimeStampMilliTZHolder clone = new NullableTimeStampMilliTZHolder();
         clone.isSet = isSet;
 
         if (clone.isSet == Util.INT_VALUE_IF_IS_SET_TRUE) {
-            int bufferLength = end - start;
-            ArrowBuf bufferCopy = allocator.buffer(bufferLength);
-            bufferCopy.setBytes(0, buffer, start, bufferLength);
-    
-            clone.start = 0;
-            clone.end = bufferLength;
-            clone.buffer = bufferCopy;
+            clone.timezone = timezone;
+            clone.value = value;
         }
 
         this.holder = clone;
-        this.allocator = allocator;
     }
 
     @Override
     public StructVector toVector(String vectorName, BufferAllocator allocator) {
         StructVector vector = new StructVector(vectorName, allocator, Expression.structVectorFieldType, null);
         
-        Util.addVarCharVectorAsChild(vector, "c1", holder);
+        Util.addTimeStampMilliTZVectorAsChild(vector, "c1", holder);
         Util.addIntVectorAsChild(vector, "c2", ScalarExpression.TYPE);
 
         vector.setValueCount(2);
@@ -72,11 +65,6 @@ public class StringExpression extends ScalarExpression {
 
     @Override
     public Expression deepClone() {
-        return new StringExpression(allocator, holder);
-    }
-
-    @Override
-    public void close() throws Exception {
-        AutoCloseables.close(holder.buffer);
+        return new TimeStampMilliTZScalarExpression(holder);
     }
 }
