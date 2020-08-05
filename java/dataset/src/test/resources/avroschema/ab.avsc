@@ -15,22 +15,12 @@
  * limitations under the License.
  */
 
-package org.apache.arrow.dataset.filter;
-
-import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.vector.FieldVector;
-import org.apache.arrow.vector.complex.StructVector;
-import org.apache.arrow.vector.types.pojo.ArrowType;
-import org.apache.arrow.vector.types.pojo.FieldType;
-
-public abstract class Expression implements AutoCloseable {
-    
-    protected static final FieldType structVectorFieldType = 
-        FieldType.nullable(ArrowType.Struct.INSTANCE);
-
-    public abstract StructVector toVector(String vectorName, BufferAllocator allocator);
-
-    public abstract Expression deepClone();
-
-    // TODO: Add an alternative deepClone method which takes in an allocator
+{
+ "namespace": "org.apache.arrow.dataset",
+ "type": "record",
+ "name": "ab",
+ "fields": [
+     {"name": "a", "type": ["int", "null"]},
+     {"name": "b", "type": ["double", "null"]}
+ ]
 }
