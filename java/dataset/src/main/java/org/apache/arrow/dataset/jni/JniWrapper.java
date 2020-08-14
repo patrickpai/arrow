@@ -96,6 +96,8 @@ public class JniWrapper {
    */
   public native NativeRecordBatchHandle nextRecordBatch(long scannerId);
 
+  public native NativeHandles allRecordBatches(long scannerId);
+
   /**
    * Release the Buffer by destroying its reference held by JNI wrapper.
    * @param bufferId the native pointer of the arrow::Buffer instance.

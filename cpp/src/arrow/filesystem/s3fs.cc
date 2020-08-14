@@ -874,6 +874,7 @@ class S3FileSystem::Impl {
 
   Status Init() {
     credentials_ = options_.credentials_provider->GetAWSCredentials();
+    client_config_.verifySSL = false;
     client_config_.region = ToAwsString(options_.region);
     client_config_.endpointOverride = ToAwsString(options_.endpoint_override);
     if (options_.scheme == "http") {

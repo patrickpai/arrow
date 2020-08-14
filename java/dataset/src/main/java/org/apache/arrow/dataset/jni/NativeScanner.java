@@ -20,6 +20,7 @@ package org.apache.arrow.dataset.jni;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
@@ -58,6 +59,38 @@ public class NativeScanner implements Scanner {
   public NativeScanner(NativeContext context, long scannerId) {
     this.context = context;
     this.scannerId = scannerId;
+  }
+
+  @Override
+  public List<ArrowRecordBatch> getAllRecordBatches() {
+    NativeHandles nativeHandles = JniWrapper.get().allRecordBatches(this.scannerId);
+
+    NativeRecordBatchHandle[] handles = nativeHandles.getHandles();
+
+    List<ArrowRecordBatch> ret = new ArrayList<>();
+    for (NativeRecordBatchHandle handle : handles) {
+      final ArrayList<ArrowBuf> buffers = new ArrayList<>();
+      for (NativeRecordBatchHandle.Buffer buffer : handle.getBuffers()) {
+        final BufferAllocator allocator = context.getAllocator();
+        final int size = LargeMemoryUtil.checkedCastToInt(buffer.size);
+        final NativeUnderlyingMemory am = NativeUnderlyingMemory.create(allocator,
+            size, buffer.nativeInstanceId, buffer.memoryAddress);
+        BufferLedger ledger = am.associate(allocator);
+        ArrowBuf buf = new ArrowBuf(ledger, null, size, buffer.memoryAddress);
+        buffers.add(buf);
+      }
+
+      try {
+        final int numRows = LargeMemoryUtil.checkedCastToInt(handle.getNumRows());
+        ArrowRecordBatch batch = new ArrowRecordBatch(numRows, handle.getFields().stream()
+            .map(field -> new ArrowFieldNode(field.length, field.nullCount))
+            .collect(Collectors.toList()), buffers);
+        ret.add(batch);
+      } finally {
+        buffers.forEach(buffer -> buffer.getReferenceManager().release());
+      }
+    }
+    return ret;
   }
 
   ScanTask.BatchIterator execute() {

@@ -64,6 +64,14 @@ std::string non_hadoop_lz4_compressed() {
   return data_file("non_hadoop_lz4_compressed.parquet");
 }
 
+std::string big_hadoop_file() {
+  return data_file("227989e406de9f67edf9a7361e818005e6547f10102966d0b4074a8ad04696a0.parquet");
+}
+
+std::string another_big_file() {
+  return data_file("another_big.parquet");
+}
+
 // TODO: Assert on definition and repetition levels
 template <typename DType, typename ValueType>
 void AssertColumnValues(std::shared_ptr<TypedColumnReader<DType>> col, int64_t batch_size,
@@ -98,37 +106,69 @@ class TestCodec : public ::testing::TestWithParam<CodecTestParam> {
 
 TEST_P(TestCodec, FileMetadataAndValues) {
   std::unique_ptr<ParquetFileReader> reader_ = ParquetFileReader::OpenFile(GetDataFile());
-  std::shared_ptr<RowGroupReader> group = reader_->RowGroup(0);
+  // std::shared_ptr<RowGroupReader> group = reader_->RowGroup(0);
 
-  // This file only has 4 rows
-  ASSERT_EQ(4, reader_->metadata()->num_rows());
-  // This file only has 3 columns
-  ASSERT_EQ(3, reader_->metadata()->num_columns());
-  // This file only has 1 row group
-  ASSERT_EQ(1, reader_->metadata()->num_row_groups());
-  // Size of the metadata is given by GetExpectedMetadataSize()
-  ASSERT_EQ(GetExpectedMetadataSize(), reader_->metadata()->size());
-  // This row group must have 4 rows
-  ASSERT_EQ(4, group->metadata()->num_rows());
+  std::cout << "In TestCodec, FileMetadataAndValues"
+            << "\nreader_->metadata()->num_row_groups(): " << reader_->metadata()->num_row_groups()
+            << std::endl;
+  for (int rg = 0; rg < reader_->metadata()->num_row_groups(); rg++) {
+    std::shared_ptr<RowGroupReader> group = reader_->RowGroup(rg);
+    std::cout << "Attempting to read row group " << rg << std::endl;
+
+    std::shared_ptr<Int64Reader> col0 = std::dynamic_pointer_cast<Int64Reader>(group->Column(0));
+    std::shared_ptr<ByteArrayReader> col1 = std::dynamic_pointer_cast<ByteArrayReader>(group->Column(1));
+    std::shared_ptr<Int64Reader> col2 = std::dynamic_pointer_cast<Int64Reader>(group->Column(2));
+
+    // int64_t batch_size = group->metadata()->num_rows();
+    int64_t batch_size = 1;
+    std::vector<int64_t> values0(batch_size);
+    std::vector<ByteArray> values1(batch_size);
+    std::vector<int64_t> values2(batch_size);
+    int64_t col0_values_read;
+    int64_t col1_values_read;
+    int64_t col2_values_read;
+
+    std::cout << "About to read batches" << std::endl;
+    // col0->ReadBatch(batch_size, nullptr, nullptr, values0.data(), &col0_values_read);
+    // col1->ReadBatch(batch_size, nullptr, nullptr, values1.data(), &col1_values_read);
+    col2->ReadBatch(batch_size, nullptr, nullptr, values2.data(), &col2_values_read);
+
+    std::cout << "rg: " << rg
+              // << ", col0_values_read: " << col0_values_read
+              // << ", col1_values_read: " << col1_values_read
+              << ", col2_values_read: " << col2_values_read
+              << std::endl;
+  }	
+
+  // // This file only has 4 rows
+  // ASSERT_EQ(4, reader_->metadata()->num_rows());
+  // // This file only has 3 columns
+  // ASSERT_EQ(3, reader_->metadata()->num_columns());
+  // // This file only has 1 row group
+  // ASSERT_EQ(1, reader_->metadata()->num_row_groups());
+  // // Size of the metadata is given by GetExpectedMetadataSize()
+  // ASSERT_EQ(GetExpectedMetadataSize(), reader_->metadata()->size());
+  // // This row group must have 4 rows
+  // ASSERT_EQ(4, group->metadata()->num_rows());
 
   // column 0, c0
-  std::shared_ptr<Int64Reader> col0 =
-      std::dynamic_pointer_cast<Int64Reader>(group->Column(0));
-  std::vector<int64_t> expected_values = {1593604800, 1593604800, 1593604801, 1593604801};
-  AssertColumnValues(col0, 4, 4, expected_values, 4);
+  // std::shared_ptr<Int64Reader> col0 =
+  //     std::dynamic_pointer_cast<Int64Reader>(group->Column(0));
+  // std::vector<int64_t> expected_values = {1593604800, 1593604800, 1593604801, 1593604801};
+  // AssertColumnValues(col0, 4, 4, expected_values, 4);
 
-  // column 1, c1
-  std::vector<ByteArray> expected_byte_arrays = {ByteArray("abc"), ByteArray("def"),
-                                                 ByteArray("abc"), ByteArray("def")};
-  std::shared_ptr<ByteArrayReader> col1 =
-      std::dynamic_pointer_cast<ByteArrayReader>(group->Column(1));
-  AssertColumnValues(col1, 4, 4, expected_byte_arrays, 4);
+//   // column 1, c1
+//   std::vector<ByteArray> expected_byte_arrays = {ByteArray("abc"), ByteArray("def"),
+//                                                  ByteArray("abc"), ByteArray("def")};
+//   std::shared_ptr<ByteArrayReader> col1 =
+//       std::dynamic_pointer_cast<ByteArrayReader>(group->Column(1));
+//   AssertColumnValues(col1, 4, 4, expected_byte_arrays, 4);
 
-  // column 2, v11
-  std::vector<double> expected_double_values = {42.0, 7.7, 42.125, 7.7};
-  std::shared_ptr<DoubleReader> col2 =
-      std::dynamic_pointer_cast<DoubleReader>(group->Column(2));
-  AssertColumnValues(col2, 4, 4, expected_double_values, 4);
+//   // column 2, v11
+//   std::vector<double> expected_double_values = {42.0, 7.7, 42.125, 7.7};
+//   std::shared_ptr<DoubleReader> col2 =
+//       std::dynamic_pointer_cast<DoubleReader>(group->Column(2));
+//   AssertColumnValues(col2, 4, 4, expected_double_values, 4);
 }
 
 class TestAllTypesPlain : public ::testing::Test {
@@ -562,9 +602,11 @@ TEST(TestFileReader, BufferedReads) {
 
 #ifdef ARROW_WITH_LZ4
 INSTANTIATE_TEST_SUITE_P(Lz4CodecTests, TestCodec,
-                         ::testing::Values(CodecTestParam(hadoop_lz4_compressed(), 376),
-                                           CodecTestParam(non_hadoop_lz4_compressed(),
-                                                          2245)));
+                         ::testing::Values(
+                                          // CodecTestParam(hadoop_lz4_compressed(), 376),
+                                          //  CodecTestParam(non_hadoop_lz4_compressed(),
+                                                          // 2245),
+                                           CodecTestParam(another_big_file(), 5555)));
 #endif
 
 }  // namespace parquet

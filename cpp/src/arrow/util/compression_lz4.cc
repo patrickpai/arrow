@@ -315,7 +315,7 @@ class Lz4Codec : public Codec {
         reinterpret_cast<const char*>(input), reinterpret_cast<char*>(output_buffer),
         static_cast<int>(input_len), static_cast<int>(output_buffer_len));
     if (decompressed_size < 0) {
-      return Status::IOError("Corrupt Lz4 compressed data.");
+      return Status::IOError("FINDME | Corrupt Lz4 compressed data.");
     }
     return decompressed_size;
   }
@@ -372,6 +372,12 @@ class Lz4HadoopCodec : public Lz4Codec {
     uint32_t expected_compressed_size =
         BitUtil::FromBigEndian(SafeLoadAs<uint32_t>(input + sizeof(uint32_t)));
     int64_t lz4_compressed_buffer_size = input_len - kPrefixLength;
+
+    // return Status::IOError("FINDME | expected_decompressed_size: " + std::to_string(expected_decompressed_size)
+    //   + " | expected_compressed_size: " + std::to_string(expected_compressed_size) 
+    //   + " | lz4_compressed_buffer_size: " + std::to_string(lz4_compressed_buffer_size)
+    //   + " | input_len: " + std::to_string(input_len)
+    // );
 
     // We use a heuristic to determine if the parquet file being read
     // was compressed using the Hadoop Lz4Codec.

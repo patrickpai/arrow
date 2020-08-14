@@ -15,32 +15,17 @@
  * limitations under the License.
  */
 
-package org.apache.arrow.dataset.scanner;
+package org.apache.arrow.dataset.jni;
 
-import java.util.List;
+public class NativeHandles {
 
-import org.apache.arrow.vector.ipc.message.ArrowRecordBatch;
-import org.apache.arrow.vector.types.pojo.Schema;
+  private final NativeRecordBatchHandle[] handles;
 
-/**
- * A high level interface for scanning data over datasets.
- */
-public interface Scanner extends AutoCloseable {
+  public NativeHandles(NativeRecordBatchHandle[] handles) {
+    this.handles = handles;
+  }
 
-  /**
-   * Perform the scan operation.
-   *
-   * @return a iterable set of {@link ScanTask}s. Each task is considered independent and it is allowed
-   *     to execute the tasks concurrently to gain better performance.
-   */
-  Iterable<? extends ScanTask> scan();
-
-  /**
-   * Get the schema of this Scanner.
-   *
-   * @return the schema instance
-   */
-  Schema schema();
-
-  List<ArrowRecordBatch> getAllRecordBatches();
+  public NativeRecordBatchHandle[] getHandles() {
+    return handles;
+  }
 }

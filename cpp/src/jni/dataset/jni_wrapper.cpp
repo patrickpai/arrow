@@ -38,6 +38,9 @@ static jmethodID record_batch_handle_constructor;
 static jmethodID record_batch_handle_field_constructor;
 static jmethodID record_batch_handle_buffer_constructor;
 
+static jclass record_handles_class;
+static jmethodID record_handles_constructor;
+
 static jint JNI_VERSION = JNI_VERSION_1_6;
 
 class JniPendingException : public std::runtime_error {
@@ -130,6 +133,16 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
       JniGetOrThrow(GetMethodID(env, record_batch_handle_field_class, "<init>", "(JJ)V"));
   record_batch_handle_buffer_constructor = JniGetOrThrow(
       GetMethodID(env, record_batch_handle_buffer_class, "<init>", "(JJJJ)V"));
+
+  record_handles_class =
+    CreateGlobalClassReference(env,
+                                 "Lorg/apache/arrow/"
+                                 "dataset/jni/NativeHandles;");
+
+  record_handles_constructor =
+      JniGetOrThrow(GetMethodID(env, record_handles_class, "<init>",
+                                "([Lorg/apache/arrow/"
+                                "dataset/jni/NativeRecordBatchHandle;)V"));
 
   return JNI_VERSION;
   JNI_METHOD_END(JNI_ERR)
@@ -471,6 +484,73 @@ JNIEXPORT jobject JNICALL Java_org_apache_arrow_dataset_jni_JniWrapper_nextRecor
 
   jobject ret = env->NewObject(record_batch_handle_class, record_batch_handle_constructor,
                                record_batch->num_rows(), field_array, buffer_array);
+  return ret;
+  JNI_METHOD_END(nullptr)
+}
+
+JNIEXPORT jobject JNICALL Java_org_apache_arrow_dataset_jni_JniWrapper_allRecordBatches(
+    JNIEnv* env, jobject, jlong scanner_id) {
+  JNI_METHOD_START
+  std::shared_ptr<arrow::dataset::Scanner> scanner =
+      RetrieveNativeInstance<DisposableScannerAdaptor>(scanner_id)
+          ->GetScanner();
+  std::vector<std::shared_ptr<arrow::RecordBatch>> vectors = 
+    JniGetOrThrow(scanner->MyToTable());
+
+  auto num_record_batches = vectors.size();
+  jobjectArray handles_array =
+      env->NewObjectArray(num_record_batches, record_batch_handle_class, nullptr);
+
+  // Iterate through each record batch
+  for (size_t idx = 0; idx < num_record_batches; idx++) {
+    std::shared_ptr<arrow::RecordBatch> record_batch =
+      vectors.at(idx);
+    
+    std::shared_ptr<arrow::Schema> schema = record_batch->schema();
+    jobjectArray field_array =
+        env->NewObjectArray(schema->num_fields(), record_batch_handle_field_class, nullptr);
+
+    std::vector<std::shared_ptr<arrow::Buffer>> buffers;
+    for (int i = 0; i < schema->num_fields(); ++i) {
+      auto column = record_batch->column(i);
+      auto dataArray = column->data();
+      jobject field = env->NewObject(record_batch_handle_field_class,
+                                    record_batch_handle_field_constructor,
+                                    column->length(), column->null_count());
+      env->SetObjectArrayElement(field_array, i, field);
+
+      for (auto& buffer : dataArray->buffers) {
+        buffers.push_back(buffer);
+      }
+    }
+
+    jobjectArray buffer_array =
+        env->NewObjectArray(buffers.size(), record_batch_handle_buffer_class, nullptr);
+
+    for (size_t j = 0; j < buffers.size(); ++j) {
+      auto buffer = buffers[j];
+      uint8_t* data = nullptr;
+      int64_t size = 0;
+      int64_t capacity = 0;
+      if (buffer != nullptr) {
+        data = (uint8_t*)buffer->data();
+        size = buffer->size();
+        capacity = buffer->capacity();
+      }
+      jobject buffer_handle = env->NewObject(record_batch_handle_buffer_class,
+                                            record_batch_handle_buffer_constructor,
+                                            CreateNativeRef(buffer), data, size, capacity);
+      env->SetObjectArrayElement(buffer_array, j, buffer_handle);
+    }
+
+    jobject handle = env->NewObject(record_batch_handle_class, record_batch_handle_constructor,
+                                record_batch->num_rows(), field_array, buffer_array);
+
+    env->SetObjectArrayElement(handles_array, idx, handle);
+  }
+
+  jobject ret = env->NewObject(record_handles_class, record_handles_constructor,
+                               handles_array);
   return ret;
   JNI_METHOD_END(nullptr)
 }
