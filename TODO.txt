@@ -1,0 +1,20 @@
+Add remaining Java expression classes:
+  HALF_FLOAT,
+  TIME32,
+  TIME64,
+  DECIMAL,
+  LIST,
+  STRUCT,
+  SPARSE_UNION,
+  DENSE_UNION,
+  DICTIONARY,
+  MAP,
+  EXTENSION,
+  FIXED_SIZE_LIST,
+  DURATION,
+  LARGE_LIST
+
+Look into modifying Java struct array/vector names (currently c1, c2, ..)
+to be more space efficient
+
+Fix style checks and productionize all code
